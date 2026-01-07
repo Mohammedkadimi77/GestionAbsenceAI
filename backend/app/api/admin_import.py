@@ -144,15 +144,35 @@ async def import_excel(file: UploadFile = File(...)):
     # ✅ ouvrir excel depuis BytesIO
     try:
         xls = pd.ExcelFile(BytesIO(content))
-        if "students" not in xls.sheet_names or "teachers" not in xls.sheet_names:
-            raise HTTPException(status_code=400, detail="Excel must contain sheets: students, teachers")
+        all_sheets = xls.sheet_names
+        all_sheets_lower = [s.lower().strip() for s in all_sheets]
 
-        df_students = pd.read_excel(xls, sheet_name="students").fillna("")
-        df_teachers = pd.read_excel(xls, sheet_name="teachers").fillna("")
+        # Stratégie de détection des feuilles
+        def find_sheet(possible_names, default_index):
+            for i, s in enumerate(all_sheets_lower):
+                if s in possible_names:
+                    return all_sheets[i]
+            if len(all_sheets) > default_index:
+                return all_sheets[default_index]
+            return None
+
+        sheet_students = find_sheet(["students", "etudiants", "étudiants", "eleves", "élèves", "feuil1"], 0)
+        sheet_teachers = find_sheet(["teachers", "enseignants", "profs", "professeurs", "feuil2"], 1)
+
+        if not sheet_students:
+            raise HTTPException(status_code=400, detail="La feuille 'students' (ou Feuil1) est introuvable.")
+        
+        df_students = pd.read_excel(xls, sheet_name=sheet_students).fillna("")
+        
+        # Les enseignants sont optionnels si on n'en a qu'une
+        df_teachers = pd.DataFrame()
+        if sheet_teachers and sheet_teachers != sheet_students:
+            df_teachers = pd.read_excel(xls, sheet_name=sheet_teachers).fillna("")
+            
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid Excel: {e}")
+        raise HTTPException(status_code=400, detail=f"Erreur de lecture Excel: {str(e)}")
 
     # ✅ mapping nomGroupe -> id (parce que dans Excel tu as le nom)
     # Exemple: colonne Excel = "nomGroupe"
@@ -172,11 +192,11 @@ async def import_excel(file: UploadFile = File(...)):
             prenom = str(row.get("prenom", "")).strip()
             statut = str(row.get("statut", "actif")).strip() or "actif"
 
-            # ✅ dans ton Excel tu as "nomGroupe" (pas groupId)
-            nom_groupe = str(row.get("nomGroupe", "")).strip().lower()
+            # ✅ Supporte "nomGroupe" ou juste "groupe"
+            nom_groupe = str(row.get("nomGroupe", row.get("groupe", ""))).strip().lower()
 
             if not email or not cin or not nom_groupe:
-                errors.append(f"students row {i+2}: missing email/CIN/nomGroupe")
+                errors.append(f"Ligne {i+2} (Étudiants): email, CIN ou groupe manquant.")
                 continue
 
             group_id_str = group_by_name.get(nom_groupe)

@@ -2,10 +2,11 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import ProtectedRoute from "./auth/ProtectedRoute";
 
-import AdminHome from "./pages/admin/AdminHome";
+import AdminHome from "./pages/Admin/AdminHome";  
 import TeacherHome from "./pages/teacher/TeacherHome";
 import StudentHome from "./pages/student/StudentHome";
 import TeacherSeances from "./pages/teacher/TeacherSeances";
+import AdminAlerts from "./pages/Admin/AdminAlerts";
 
 export default function App() {
   return (
@@ -21,7 +22,14 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-
+        <Route
+          path="/admin/alerts"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <AdminAlerts />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/teacher"
           element={

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import AppLayout from "../../layouts/AppLayout";
 import {
     fetchTeacherSeances,
-    createTeacherSeance,
     fetchStudentsByGroup,
     submitAttendance,
 } from "../../api/teacher";
@@ -23,16 +22,7 @@ export default function TeacherSeances() {
     const [modules, setModules] = useState([]);
     const [refsLoading, setRefsLoading] = useState(true);
 
-    const [form, setForm] = useState({
-        dateSeance: "",
-        heureDebut: "",
-        heureFin: "",
-        typeSeance: "cours",
-        salle: "",
-        moduleId: "",
-        groupId: "",
-    });
-    const [creating, setCreating] = useState(false);
+    const [selectedGroupId, setSelectedGroupId] = useState(null);
 
     // Attendance modal
     const [openAttend, setOpenAttend] = useState(false);
@@ -59,8 +49,8 @@ export default function TeacherSeances() {
         setRefsLoading(true);
         try {
             const [g, m] = await Promise.all([fetchTeacherGroups(), fetchTeacherModules()]);
-            setGroups(g);
-            setModules(m);
+            setGroups(Array.isArray(g) ? g : []);
+            setModules(Array.isArray(m) ? m : []);
         } finally {
             setRefsLoading(false);
         }
@@ -71,31 +61,22 @@ export default function TeacherSeances() {
         loadRefs();
     }, []);
 
-    const sortedSeances = useMemo(() => {
-        return [...seances].sort((a, b) => new Date(b.dateSeance) - new Date(a.dateSeance));
-    }, [seances]);
-
-    async function handleCreate(e) {
-        e.preventDefault();
-        setCreating(true);
-        try {
-            await createTeacherSeance(form);
-            setForm({
-                dateSeance: "",
-                heureDebut: "",
-                heureFin: "",
-                typeSeance: "cours",
-                salle: "",
-                moduleId: "",
-                groupId: "",
+    const filteredSeances = useMemo(() => {
+        let list = [...seances];
+        if (selectedGroupId) {
+            list = list.filter(s => {
+                const gid = s.groupId?.id || s.groupId?._id || s.groupId;
+                return gid === selectedGroupId;
             });
-            loadSeances();
-        } catch (e) {
-            alert(e?.response?.data?.detail || "Erreur création");
-        } finally {
-            setCreating(false);
         }
-    }
+        return list.sort((a, b) => new Date(b.dateSeance) - new Date(a.dateSeance));
+    }, [seances, selectedGroupId]);
+
+    const activeGroupName = useMemo(() => {
+        if (!selectedGroupId) return null;
+        const g = groups.find(g => (g.id || g._id) === selectedGroupId);
+        return g?.nomGroupe || "Groupe";
+    }, [selectedGroupId, groups]);
 
     async function openAttendance(s) {
         setSelectedSeance(s);
@@ -139,137 +120,199 @@ export default function TeacherSeances() {
 
     return (
         <AppLayout>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-                <div className="space-y-1">
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">
-                        Gestion des <span className="text-indigo-600">Séances</span>
-                    </h1>
-                    <p className="text-slate-500 font-medium">Planifiez vos cours et validez les présences</p>
-                </div>
-                <button onClick={loadSeances} className="px-6 py-3 bg-white border border-slate-200 rounded-2xl font-bold shadow-sm hover:border-indigo-200 transition-all flex items-center gap-2">
-                    <svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                    Rafraîchir
-                </button>
-            </div>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-            
-
-                {/* List Column */}
-                <div className="lg:col-span-8 bg-white border border-slate-100 rounded-[2.5rem] shadow-xl overflow-hidden">
-                    <div className="px-8 py-6 border-b border-slate-50 bg-slate-50/50">
-                        <h2 className="text-xl font-black text-slate-800">Historique des séances</h2>
-                    </div>
-
-                    {loading ? (
-                        <div className="p-20 text-center"><div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto" /></div>
-                    ) : sortedSeances.length === 0 ? (
-                        <div className="p-20 text-center text-slate-400 font-bold">Aucune séance enregistrée.</div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead>
-                                    <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-50">
-                                        <th className="px-8 py-4">Date & Heure</th>
-                                        <th className="px-8 py-4">Module</th>
-                                        <th className="px-8 py-4">Groupe</th>
-                                        <th className="px-8 py-4 text-right">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {sortedSeances.map(s => (
-                                        <tr key={s.id} className="group hover:bg-slate-50/50 transition-all">
-                                            <td className="px-8 py-5">
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-black text-slate-900">{s.dateSeance}</span>
-                                                    <span className="text-[10px] font-bold text-slate-400 underline decoration-indigo-200">{s.heureDebut} - {s.heureFin}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-5">
-                                                <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-black">{modules.find(m => m.id === s.moduleId)?.titre || "Module"}</span>
-                                            </td>
-                                            <td className="px-8 py-5 font-bold text-slate-700 text-sm">
-                                                {groups.find(g => g.id === s.groupId)?.nomGroupe || "Groupe"}
-                                            </td>
-                                            <td className="px-8 py-5 text-right">
-                                                <button
-                                                    onClick={() => openAttendance(s)}
-                                                    className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-indigo-600 hover:border-indigo-600 hover:bg-indigo-50 transition-all"
-                                                >
-                                                    PRÉSENCE
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
-            {/* </div>  */}
-
-            {/* Attendance Modal */}
-            {openAttend && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => !saving && setOpenAttend(false)} />
-                    <div className="relative w-full max-w-4xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-                        <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
-                            <div>
-                                <h3 className="text-2xl font-black text-slate-900">Prendre la présence</h3>
-                                <div className="flex items-center gap-4 mt-2">
-                                    <StatBadge label="Présents" count={attStats.present} color="bg-emerald-500" />
-                                    <StatBadge label="Absents" count={attStats.absent} color="bg-rose-500" />
-                                    <StatBadge label="Retards" count={attStats.retard} color="bg-amber-500" />
-                                </div>
-                            </div>
-                            <button onClick={() => setOpenAttend(false)} className="p-3 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all">
-                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        </div>
-
-                        <div className="p-8 max-h-[60vh] overflow-y-auto">
-                            {attLoading ? (
-                                <div className="text-center py-10"><div className="animate-spin h-6 w-6 border-2 border-indigo-600 border-t-transparent rounded-full mx-auto" /></div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {students.map(st => (
-                                        <div key={st.id} className="flex items-center justify-between p-4 bg-slate-50/50 border border-slate-100 rounded-2xl">
-                                            <div>
-                                                <p className="font-black text-slate-900">{st.nom} {st.prenom}</p>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{st.CIN}</p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <AttBtn active={attMap[st.id] === STATUT.PRESENT} color="bg-emerald-500" label="P" onClick={() => setAttMap({ ...attMap, [st.id]: STATUT.PRESENT })} />
-                                                <AttBtn active={attMap[st.id] === STATUT.ABSENT} color="bg-rose-500" label="A" onClick={() => setAttMap({ ...attMap, [st.id]: STATUT.ABSENT })} />
-                                                <AttBtn active={attMap[st.id] === STATUT.RETARD} color="bg-amber-500" label="R" onClick={() => setAttMap({ ...attMap, [st.id]: STATUT.RETARD })} />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                {/* Header */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                    <div>
+                        <div className="flex items-center gap-3">
+                            {selectedGroupId && (
+                                <button
+                                    onClick={() => setSelectedGroupId(null)}
+                                    className="p-2 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200 transition-colors"
+                                >
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+                                </button>
                             )}
+                            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
+                                {selectedGroupId ? `Séances : ${activeGroupName}` : "Mes Groupes"}
+                            </h1>
+                        </div>
+                        <p className="text-slate-500 text-sm mt-1">
+                            {selectedGroupId ? "Consultez l'historique et gérez les présences de ce groupe." : "Sélectionnez un groupe pour voir ses séances."}
+                        </p>
+                    </div>
+                    <button onClick={loadSeances} className="inline-flex items-center px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-indigo-300 transition-all shadow-sm gap-2">
+                        <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        Rafraîchir
+                    </button>
+                </div>
+
+                {loading || refsLoading ? (
+                    <div className="py-20 flex flex-col items-center">
+                        <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4" />
+                        <p className="text-slate-400 text-sm font-medium">Chargement...</p>
+                    </div>
+                ) : !selectedGroupId ? (
+                    /* GROUPS GRID */
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {groups.map(g => (
+                            <button
+                                key={g.id || g._id}
+                                onClick={() => setSelectedGroupId(g.id || g._id)}
+                                className="group bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:border-indigo-400 hover:shadow-md transition-all text-left flex flex-col gap-4"
+                            >
+                                <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-800 text-lg">{g.nomGroupe}</h3>
+                                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mt-1">Cliquez pour voir les séances</p>
+                                </div>
+                            </button>
+                        ))}
+                        {groups.length === 0 && <div className="col-span-full py-20 text-center text-slate-400 font-medium">Aucun groupe trouvé.</div>}
+                    </div>
+                ) : (
+                    /* SEANCES LIST FOR SELECTED GROUP */
+                    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-slate-800 tracking-tight">Historique des séances</h2>
+                            <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-full">{filteredSeances.length} séance(s)</span>
                         </div>
 
-                        <div className="p-8 border-t border-slate-50 flex justify-end gap-4">
-                            <button onClick={() => setOpenAttend(false)} className="px-8 py-3 font-black text-slate-400 uppercase tracking-widest text-xs">Annuler</button>
-                            <button
-                                onClick={submitAtt}
-                                disabled={saving}
-                                className="px-8 py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all text-sm"
-                            >
-                                {saving ? "ENVOI..." : "VALIDER LA LISTE"}
-                            </button>
+                        {filteredSeances.length === 0 ? (
+                            <div className="py-20 text-center">
+                                <p className="text-slate-400 font-medium">Aucune séance enregistrée pour ce groupe.</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className="bg-slate-50/50 text-slate-500 font-bold text-[10px] uppercase tracking-wider">
+                                            <th className="px-6 py-4">Date & Heure</th>
+                                            <th className="px-6 py-4">Module</th>
+                                            <th className="px-6 py-4">Salle</th>
+                                            <th className="px-6 py-4 text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {filteredSeances.map(s => (
+                                            <tr key={s.id || s._id} className="hover:bg-slate-50/50 transition-all group">
+                                                <td className="px-6 py-5">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-semibold text-slate-800">{s.dateSeance}</span>
+                                                        <span className="text-[10px] font-bold text-slate-400">{s.heureDebut} - {s.heureFin}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <span className="inline-flex items-center px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold border border-indigo-100">
+                                                        {modules.find(m => (m.id || m._id) === s.moduleId)?.titre || "Module"}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <span className="text-xs font-medium text-slate-500">{s.salle || "-"}</span>
+                                                </td>
+                                                <td className="px-6 py-5 text-right">
+                                                    <button
+                                                        onClick={() => openAttendance(s)}
+                                                        className="px-4 py-2 bg-white border border-slate-200 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm active:scale-95"
+                                                    >
+                                                        Faire l'appel
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Attendance Modal */}
+                {openAttend && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-300">
+                            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-800">Prendre la présence</h3>
+                                    <div className="flex items-center gap-6 mt-3">
+                                        <StatBadge label="Présents" count={attStats.present} color="bg-emerald-500" />
+                                        <StatBadge label="Absents" count={attStats.absent} color="bg-rose-500" />
+                                        <StatBadge label="Retards" count={attStats.retard} color="bg-amber-500" />
+                                    </div>
+                                </div>
+                                <button onClick={() => setOpenAttend(false)} className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-400 transition-all">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+
+                            <div className="p-8 max-h-[60vh] overflow-y-auto">
+                                {attLoading ? (
+                                    <div className="text-center py-10">
+                                        <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
+                                        <p className="text-slate-400 text-sm font-medium">Chargement des étudiants...</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {students.map(st => (
+                                            <div key={st.id || st._id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-indigo-100 transition-colors shadow-sm">
+                                                <div>
+                                                    <p className="font-bold text-slate-800 text-sm">{st.nom} {st.prenom}</p>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{st.CIN || st.cin || '-'}</p>
+                                                </div>
+                                                <div className="flex gap-1.5">
+                                                    <AttBtn
+                                                        active={attMap[st.id || st._id] === STATUT.PRESENT}
+                                                        color="bg-emerald-500"
+                                                        label="P"
+                                                        onClick={() => setAttMap({ ...attMap, [st.id || st._id]: STATUT.PRESENT })}
+                                                    />
+                                                    <AttBtn
+                                                        active={attMap[st.id || st._id] === STATUT.ABSENT}
+                                                        color="bg-rose-500"
+                                                        label="A"
+                                                        onClick={() => setAttMap({ ...attMap, [st.id || st._id]: STATUT.ABSENT })}
+                                                    />
+                                                    <AttBtn
+                                                        active={attMap[st.id || st._id] === STATUT.RETARD}
+                                                        color="bg-amber-500"
+                                                        label="R"
+                                                        onClick={() => setAttMap({ ...attMap, [st.id || st._id]: STATUT.RETARD })}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="p-8 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50">
+                                <button onClick={() => setOpenAttend(false)} className="px-6 py-3 font-bold text-slate-500 text-xs uppercase tracking-widest hover:text-slate-700 transition-colors">Annuler</button>
+                                <button
+                                    onClick={submitAtt}
+                                    disabled={saving}
+                                    className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all text-xs uppercase tracking-widest"
+                                >
+                                    {saving ? "Envoi..." : "Valider l'appel"}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </AppLayout>
     );
 }
 
+/* --- Helpers --- */
+
 function StatBadge({ label, count, color }) {
     return (
         <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${color} animate-pulse`} />
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}: <span className="text-slate-900">{count}</span></span>
+            <div className={`w-1.5 h-1.5 rounded-full ${color}`} />
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{label}: <span className="text-slate-900">{count}</span></span>
         </div>
     );
 }
@@ -278,7 +321,9 @@ function AttBtn({ active, color, label, onClick }) {
     return (
         <button
             onClick={onClick}
-            className={`w-10 h-10 rounded-xl font-black text-xs transition-all ${active ? `${color} text-white shadow-lg` : 'bg-white text-slate-400 border border-slate-100 hover:bg-slate-50'}`}
+            className={`w-9 h-9 rounded-lg font-bold text-xs transition-all ${active
+                    ? `${color} text-white shadow-md active:scale-95`
+                    : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-indigo-50 hover:text-indigo-500'}`}
         >
             {label}
         </button>

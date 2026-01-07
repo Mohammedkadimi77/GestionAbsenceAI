@@ -14,6 +14,7 @@ from app.api.ai_explain import router as ai_explain_router
 from app.api.ai_train import router as ai_train_router
 from fastapi.middleware.cors import CORSMiddleware
 
+
 app = FastAPI(title="Gestion Absences + IA (MongoDB)")
 
 @app.on_event("startup")
@@ -29,6 +30,8 @@ app.include_router(admin_import_router)
 app.include_router(student_router)
 app.include_router(ai_explain_router)
 app.include_router(ai_train_router)
+
+
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 

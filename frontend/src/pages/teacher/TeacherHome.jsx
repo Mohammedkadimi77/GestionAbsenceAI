@@ -139,244 +139,198 @@ export default function TeacherHome() {
 
     return (
         <AppLayout>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-                <div className="space-y-1">
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">
-                        Espace <span className="text-indigo-600">Enseignant</span>
-                    </h1>
-                    <p className="text-slate-500 font-medium">Suivi des séances et gestion des présences</p>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+                {/* Header */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
+                            Espace <span className="text-indigo-600">Enseignant</span>
+                        </h1>
+                        <p className="text-slate-500 text-sm mt-1">Gérez vos séances et faites l'appel simplement.</p>
+                    </div>
+                    <button onClick={loadSeances} className="inline-flex items-center px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-indigo-300 transition-all shadow-sm gap-2">
+                        <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        Rafraîchir
+                    </button>
                 </div>
-                <button onClick={loadSeances} className="px-6 py-3 bg-white border border-slate-200 rounded-2xl font-bold shadow-sm hover:border-indigo-200 transition-all flex items-center gap-2">
-                    <svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                    Rafraîchir
-                </button>
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                {/* Form Column */}
-                <div className="lg:col-span-4 space-y-6">
-                    <div className="bg-white/80 backdrop-blur-xl border border-white rounded-[2.5rem] shadow-2xl p-8 sticky top-8">
-                        <h2 className="text-xl font-black text-slate-800 mb-6">Nouvelle Séance</h2>
-                        <form onSubmit={handleCreate} className="space-y-4">
-                            <div className="space-y-2">
-                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Module</label>
-                                <select
-                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-sm font-bold focus:ring-4 focus:ring-indigo-100 focus:bg-white outline-none transition-all"
-                                    value={form.moduleId}
-                                    onChange={e => setForm({ ...form, moduleId: e.target.value })}
-                                    required
-                                >
-                                    <option value="">Choisir...</option>
-                                    {modules.map(m => <option key={m.id} value={m.id}>{m.titre}</option>)}
-                                </select>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Groupe</label>
-                                <select
-                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-sm font-bold focus:ring-4 focus:ring-indigo-100 focus:bg-white outline-none transition-all"
-                                    value={form.groupId}
-                                    onChange={e => setForm({ ...form, groupId: e.target.value })}
-                                    required
-                                >
-                                    <option value="">Choisir...</option>
-                                    {groups.map(g => <option key={g.id} value={g.id}>{g.nomGroupe}</option>)}
-                                </select>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Date</label>
-                                    <input
-                                        type="date"
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-3 text-xs font-bold focus:bg-white outline-none transition-all"
-                                        value={form.dateSeance}
-                                        onChange={e => setForm({ ...form, dateSeance: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Type</label>
+                    {/* Form Column - Nouvelle Séance */}
+                    <div className="lg:col-span-4">
+                        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm sticky top-8">
+                            <h2 className="text-lg font-bold text-slate-800 mb-6 tracking-tight">Nouvelle Séance</h2>
+                            <form onSubmit={handleCreate} className="space-y-4">
+                                <FormItem label="Module">
                                     <select
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-3 text-xs font-bold focus:bg-white outline-none transition-all"
-                                        value={form.typeSeance}
-                                        onChange={e => setForm({ ...form, typeSeance: e.target.value })}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                                        value={form.moduleId}
+                                        onChange={e => setForm({ ...form, moduleId: e.target.value })}
+                                        required
                                     >
-                                        <option value="cours">Cours</option>
-                                        <option value="td">TD</option>
-                                        <option value="tp">TP</option>
+                                        <option value="">Choisir un module...</option>
+                                        {modules.map(m => <option key={m.id} value={m.id}>{m.titre}</option>)}
                                     </select>
-                                </div>
-                            </div>
+                                </FormItem>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Début</label>
-                                    <input type="time" className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-3 text-xs font-bold focus:bg-white outline-none" value={form.heureDebut} onChange={e => setForm({ ...form, heureDebut: e.target.value })} required />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Fin</label>
-                                    <input type="time" className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-3 text-xs font-bold focus:bg-white outline-none" value={form.heureFin} onChange={e => setForm({ ...form, heureFin: e.target.value })} required />
-                                </div>
-                            </div>
+                                <FormItem label="Groupe">
+                                    <select
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                                        value={form.groupId}
+                                        onChange={e => setForm({ ...form, groupId: e.target.value })}
+                                        required
+                                    >
+                                        <option value="">Choisir un groupe...</option>
+                                        {groups.map(g => <option key={g.id} value={g.id}>{g.nomGroupe}</option>)}
+                                    </select>
+                                </FormItem>
 
-                            <div className="space-y-2">
-                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Salle</label>
-                                <input
-                                    type="text"
-                                    placeholder="Ex: B102, Amphi A..."
-                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-sm font-bold focus:ring-4 focus:ring-indigo-100 focus:bg-white outline-none transition-all"
-                                    value={form.salle}
-                                    onChange={e => setForm({ ...form, salle: e.target.value })}
-                                />
-                            </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <FormItem label="Date">
+                                        <input
+                                            type="date"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:bg-white outline-none transition-all"
+                                            value={form.dateSeance}
+                                            onChange={e => setForm({ ...form, dateSeance: e.target.value })}
+                                            required
+                                        />
+                                    </FormItem>
+                                    <FormItem label="Type">
+                                        <select
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:bg-white outline-none transition-all"
+                                            value={form.typeSeance}
+                                            onChange={e => setForm({ ...form, typeSeance: e.target.value })}
+                                        >
+                                            <option value="cours">Cours</option>
+                                            <option value="td">TD</option>
+                                            <option value="tp">TP</option>
+                                        </select>
+                                    </FormItem>
+                                </div>
 
-                            <button
-                                type="submit"
-                                disabled={creating}
-                                className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all mt-4"
-                            >
-                                {creating ? "CRÉATION..." : "CRÉER SÉANCE"}
-                            </button>
-                        </form>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <FormItem label="Début">
+                                        <input type="time" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:bg-white outline-none" value={form.heureDebut} onChange={e => setForm({ ...form, heureDebut: e.target.value })} required />
+                                    </FormItem>
+                                    <FormItem label="Fin">
+                                        <input type="time" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:bg-white outline-none" value={form.heureFin} onChange={e => setForm({ ...form, heureFin: e.target.value })} required />
+                                    </FormItem>
+                                </div>
+
+                                <FormItem label="Salle">
+                                    <input
+                                        type="text"
+                                        placeholder="Ex: Salle 10..."
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                                        value={form.salle}
+                                        onChange={e => setForm({ ...form, salle: e.target.value })}
+                                    />
+                                </FormItem>
+
+                                <button
+                                    type="submit"
+                                    disabled={creating}
+                                    className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-md shadow-indigo-100 hover:bg-indigo-700 active:scale-[0.98] transition-all mt-4"
+                                >
+                                    {creating ? "Création..." : "Ajouter la séance"}
+                                </button>
+                            </form>
+                        </div>
                     </div>
-                </div>
 
-                {/* List Column */}
-                {/* <div className="lg:col-span-8 bg-white border border-slate-100 rounded-[2.5rem] shadow-xl overflow-hidden">
-                    <div className="px-8 py-6 border-b border-slate-50 bg-slate-50/50">
-                        <h2 className="text-xl font-black text-slate-800">Séances du jour / récentes</h2>
-                    </div>
+                    
 
-                    {loading ? (
-                        <div className="p-20 text-center"><div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto" /></div>
-                    ) : sortedSeances.length === 0 ? (
-                        <div className="p-20 text-center text-slate-400 font-bold">Aucune séance.</div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead>
-                                    <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-50">
-                                        <th className="px-8 py-4">Session</th>
-                                        <th className="px-8 py-4">Module</th>
-                                        <th className="px-8 py-4">Groupe</th>
-                                        <th className="px-8 py-4">Salle</th>
-                                        <th className="px-8 py-4 text-right">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {sortedSeances.map(s => (
-                                        <tr key={s.id} className="group hover:bg-slate-50/50 transition-all">
-                                            <td className="px-8 py-5">
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-black text-slate-900">{s.dateSeance}</span>
-                                                    <span className="text-[10px] font-bold text-slate-400">{s.heureDebut} - {s.heureFin}</span>
+                {/* Attendance Modal */}
+                {openAttend && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-300">
+                            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-800">Prendre la présence</h3>
+                                    <div className="flex items-center gap-6 mt-3">
+                                        <StatBadge label="Présents" count={attStats.present} color="bg-emerald-500" />
+                                        <StatBadge label="Absents" count={attStats.absent} color="bg-rose-500" />
+                                        <StatBadge label="Retards" count={attStats.retard} color="bg-amber-500" />
+                                    </div>
+                                </div>
+                                <button onClick={() => setOpenAttend(false)} className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-400 transition-all">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+
+                            <div className="p-8 max-h-[60vh] overflow-y-auto">
+                                {attLoading ? (
+                                    <div className="text-center py-10">
+                                        <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
+                                        <p className="text-slate-400 text-sm font-medium">Chargement des étudiants...</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {students.map(st => (
+                                            <div key={st.id || st._id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-indigo-100 transition-colors shadow-sm">
+                                                <div>
+                                                    <p className="font-bold text-slate-800 text-sm">{st.nom} {st.prenom}</p>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{st.CIN || st.cin || '-'}</p>
                                                 </div>
-                                            </td>
-                                            <td className="px-8 py-5">
-                                                <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-black">{modules.find(m => m.id === s.moduleId)?.titre || "Module"}</span>
-                                            </td>
-                                            <td className="px-8 py-5 font-bold text-slate-700 text-sm">
-                                            {groups.find(g => g.id === s.groupId)?.nomGroupe || "Groupe"}
-                                        </td>
-                                        <td className="px-8 py-5">
-                                            <span className="text-xs font-bold text-slate-500">{s.salle || "-"}</span>
-                                        </td>
-                                        <td className="px-8 py-5 text-right">
-                                                <button
-                                                    onClick={() => openAttendance(s)}
-                                                    className="px-5 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all"
-                                                >
-                                                    POINTAGE
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div> */}
-            </div>
-
-            {/* Attendance Modal */}
-            {openAttend && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => !saving && setOpenAttend(false)} />
-                    <div className="relative w-full max-w-4xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-                        <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
-                            <div>
-                                <h3 className="text-2xl font-black text-slate-900">Prendre la présence</h3>
-                                <div className="flex items-center gap-4 mt-2">
-                                    <StatBadge label="Présents" count={attStats.present} color="bg-emerald-500" />
-                                    <StatBadge label="Absents" count={attStats.absent} color="bg-rose-500" />
-                                    <StatBadge label="Retards" count={attStats.retard} color="bg-amber-500" />
-                                </div>
+                                                <div className="flex gap-1.5">
+                                                    <AttBtn
+                                                        active={attMap[st.id || st._id] === STATUT.PRESENT}
+                                                        color="bg-emerald-500"
+                                                        label="P"
+                                                        onClick={() => setAttMap({ ...attMap, [st.id || st._id]: STATUT.PRESENT })}
+                                                    />
+                                                    <AttBtn
+                                                        active={attMap[st.id || st._id] === STATUT.ABSENT}
+                                                        color="bg-rose-500"
+                                                        label="A"
+                                                        onClick={() => setAttMap({ ...attMap, [st.id || st._id]: STATUT.ABSENT })}
+                                                    />
+                                                    <AttBtn
+                                                        active={attMap[st.id || st._id] === STATUT.RETARD}
+                                                        color="bg-amber-500"
+                                                        label="R"
+                                                        onClick={() => setAttMap({ ...attMap, [st.id || st._id]: STATUT.RETARD })}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                            <button onClick={() => setOpenAttend(false)} className="p-3 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all">
-                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        </div>
 
-                        <div className="p-8 max-h-[60vh] overflow-y-auto">
-                            {attLoading ? (
-                                <div className="text-center py-10"><div className="animate-spin h-6 w-6 border-2 border-indigo-600 border-t-transparent rounded-full mx-auto" /></div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {students.map(st => (
-                                        <div key={st.id || st._id} className="flex items-center justify-between p-4 bg-slate-50/50 border border-slate-100 rounded-2xl">
-                                            <div>
-                                                <p className="font-black text-slate-900">{st.nom} {st.prenom}</p>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{st.CIN || st.cin || '-'}</p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <AttBtn
-                                                    active={attMap[st.id || st._id] === STATUT.PRESENT}
-                                                    color="bg-emerald-500"
-                                                    label="P"
-                                                    onClick={() => setAttMap({ ...attMap, [st.id || st._id]: STATUT.PRESENT })}
-                                                />
-                                                <AttBtn
-                                                    active={attMap[st.id || st._id] === STATUT.ABSENT}
-                                                    color="bg-rose-500"
-                                                    label="A"
-                                                    onClick={() => setAttMap({ ...attMap, [st.id || st._id]: STATUT.ABSENT })}
-                                                />
-                                                <AttBtn
-                                                    active={attMap[st.id || st._id] === STATUT.RETARD}
-                                                    color="bg-amber-500"
-                                                    label="R"
-                                                    onClick={() => setAttMap({ ...attMap, [st.id || st._id]: STATUT.RETARD })}
-                                                />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="p-8 border-t border-slate-50 flex justify-end gap-4">
-                            <button onClick={() => setOpenAttend(false)} className="px-8 py-3 font-black text-slate-400 uppercase tracking-widest text-xs">Annuler</button>
-                            <button
-                                onClick={submitAtt}
-                                disabled={saving}
-                                className="px-8 py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all text-sm"
-                            >
-                                {saving ? "ENVOI..." : "VALIDER LA LISTE"}
-                            </button>
+                            <div className="p-8 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50">
+                                <button onClick={() => setOpenAttend(false)} className="px-6 py-3 font-bold text-slate-500 text-xs uppercase tracking-widest hover:text-slate-700 transition-colors">Annuler</button>
+                                <button
+                                    onClick={submitAtt}
+                                    disabled={saving}
+                                    className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all text-xs uppercase tracking-widest"
+                                >
+                                    {saving ? "Envoi..." : "Valider l'appel"}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </AppLayout>
+    );
+}
+
+/* --- Helpers --- */
+
+function FormItem({ label, children }) {
+    return (
+        <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">{label}</label>
+            {children}
+        </div>
     );
 }
 
 function StatBadge({ label, count, color }) {
     return (
         <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${color} animate-pulse`} />
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}: <span className="text-slate-900">{count}</span></span>
+            <div className={`w-1.5 h-1.5 rounded-full ${color}`} />
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{label}: <span className="text-slate-900">{count}</span></span>
         </div>
     );
 }
@@ -385,7 +339,9 @@ function AttBtn({ active, color, label, onClick }) {
     return (
         <button
             onClick={onClick}
-            className={`w-10 h-10 rounded-xl font-black text-xs transition-all ${active ? `${color} text-white shadow-lg` : 'bg-white text-slate-400 border border-slate-100 hover:bg-slate-50'}`}
+            className={`w-9 h-9 rounded-lg font-bold text-xs transition-all ${active
+                    ? `${color} text-white shadow-md active:scale-95`
+                    : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-indigo-50 hover:text-indigo-500'}`}
         >
             {label}
         </button>
