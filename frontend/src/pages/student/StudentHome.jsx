@@ -195,8 +195,8 @@ export default function StudentDashboard() {
                               onClick={() => openJustif(a)}
                               disabled={!!jStatut}
                               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${jStatut
-                                  ? "bg-slate-50 text-slate-300 cursor-not-allowed"
-                                  : "bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white"
+                                ? "bg-slate-50 text-slate-300 cursor-not-allowed"
+                                : "bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white"
                                 }`}
                             >
                               {jStatut ? "Justifié" : "Justifier"}
@@ -236,9 +236,9 @@ export default function StudentDashboard() {
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Raison</label>
                 <textarea
+                  required
                   value={raison}
                   onChange={(e) => setRaison(e.target.value)}
-                  required
                   rows={3}
                   className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all resize-none shadow-sm"
                   placeholder="Pourquoi étiez-vous absent/en retard ?"

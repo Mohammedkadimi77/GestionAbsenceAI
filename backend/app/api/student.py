@@ -48,7 +48,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 @router.post("/justifications")
 async def submit_justification(
     absenceId: str = Form(...),
-    raison: str = Form(...),
+    raison: str | None = Form(None),
     file: UploadFile | None = File(None),
     student=Depends(require_role("student")),
 ):

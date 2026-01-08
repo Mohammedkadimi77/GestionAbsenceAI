@@ -42,3 +42,7 @@ export async function importExcel(file) {
 
   return res.data;
 }
+export async function generateAIAlerts(period = "30d") {
+  const res = await http.post(`/admin/ai/detect?period=${period}`);
+  return res.data;
+}

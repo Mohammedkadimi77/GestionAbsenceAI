@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from beanie import PydanticObjectId
 from typing import Optional
 
@@ -10,6 +10,7 @@ from app.models.user_student import Student
 from app.models.user_teacher import Teacher
 from app.models.absence import Absence
 from app.schemas.admin import AlertUpdate
+from app.ai.feature_engineering import compute_student_features
 
 router = APIRouter(
     prefix="/admin",
@@ -166,3 +167,58 @@ async def decide_justification(justif_id: str, payload: dict, admin=Depends(requ
 
     await justif.save()
     return {"message": "Success", "id": str(justif.id), "statut": justif.statut}
+
+# ✅ 5) Détection d'anomalies par IA (Batch)
+@router.post("/ai/detect")
+async def detect_anomalies(period: str = "30d"):
+    """Scanne tous les étudiants et crée des alertes pour les comportements suspects."""
+    print("DEBUG AI: Detection started")
+    days = 30
+    if period.endswith("d") and period[:-1].isdigit():
+        days = int(period[:-1])
+
+    students = await Student.find_all().to_list()
+    print(f"DEBUG AI: Found {len(students)} students")
+    new_alerts_count = 0
+    
+    end_date = datetime.now(timezone.utc)
+    start_date = end_date - timedelta(days=days)
+
+    for s in students:
+        feats = await compute_student_features(s.id, days)
+        
+        late_rate = float(feats.get("retard_rate", 0.0))
+        absent_rate = float(feats.get("absence_rate", 0.0))
+        streak = float(feats.get("max_consecutive_absences", 0))
+
+        # Formule: 50% absences, 30% retards, 20% streak
+        score = (0.5 * absent_rate + 0.3 * late_rate + 0.2 * min(streak / 5.0, 1.0))
+        
+        print(f"DEBUG AI: Student {s.nom} {s.prenom} -> Absent: {absent_rate:.2f}, Late: {late_rate:.2f}, Streak: {streak}, Score: {score:.4f}")
+
+        # Seuil d'alerte (plus bas pour tests: 0.1)
+        if score >= 0.1:
+            # Éviter les doublons (une alerte par jour max)
+            today_start = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            exists = await Alert.find_one(
+                Alert.studentId == s.id,
+                Alert.createdAt >= today_start,
+                Alert.typeAlerte == "Anomalie d'assiduité"
+            )
+            
+            if not exists:
+                alert = Alert(
+                    typeAlerte="Anomalie d'assiduité",
+                    scoreAnomalie=round(score, 4),
+                    dateStart=start_date,
+                    periodEnd=end_date,
+                    studentId=s.id,
+                    statut="nouvelle"
+                )
+                await alert.insert()
+                new_alerts_count += 1
+                
+    return {
+        "message": f"Analyse terminée. {new_alerts_count} nouvelles alertes générées.",
+        "count": new_alerts_count
+    }

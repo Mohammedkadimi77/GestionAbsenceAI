@@ -3,8 +3,8 @@ from pydantic import Field
 from datetime import datetime, timezone
 
 class Justification(Document):
-    raison: str
-    fichier: str
+    raison: str | None = None
+    fichier: str | None = None
     statut: str = "en_attente"  # en_attente | validee | refusee
 
     submittedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
