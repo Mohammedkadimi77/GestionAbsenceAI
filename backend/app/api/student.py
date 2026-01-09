@@ -1,14 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from beanie import PydanticObjectId
 from datetime import datetime, timezone
+from typing import Optional
 from pathlib import Path
 import uuid
+from pydantic import BaseModel
 
 from app.core.deps import require_role
 from app.models.justification import Justification
 from app.models.absence import Absence
 from app.models.seance import Seance
 from app.models.module import Module
+from app.models.user_student import Student
 
 router = APIRouter(prefix="/student", tags=["Student"], dependencies=[Depends(require_role("student"))])
 
@@ -99,10 +102,63 @@ async def submit_justification(
         decidedByAdminId=None,
     )
     await justif.insert()
-    return {"message": "Justification submitted", "id": str(justif.id)}
+    return {"message": "Justificatif soumis"}
 
+# ✅ Scanner un QR Code pour marquer présence
+class QRSubmit(BaseModel):
+    qrToken: str
 
+@router.post("/scan")
+async def scan_qr_code(payload: QRSubmit, current=Depends(require_role("student"))):
+    student = current["user"]
+    token = payload.qrToken
+    now = datetime.now(timezone.utc)
 
+    # 1. Trouver la séance avec ce token valide
+    # Note: On doit vérifier manuellement l'expiration car MongoDB requête simple
+    seance = await Seance.find_one(Seance.qrToken == token)
+    
+    if not seance:
+        raise HTTPException(status_code=404, detail="Code QR invalide")
+    
+    # Ensure timezone awareness for comparison
+    expires_at = seance.qrExpiresAt
+    if expires_at and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if expires_at < now:
+        raise HTTPException(status_code=400, detail="Ce code QR a expiré")
+
+    # 2. Vérifier que l'étudiant est bien dans le groupe de la séance
+    if student.groupId != seance.groupId:
+        raise HTTPException(status_code=403, detail="Vous n'appartenez pas à ce groupe")
+
+    # 3. Marquer présence (upsert)
+    try:
+        existing = await Absence.find_one(Absence.studentId == student.id, Absence.seanceId == seance.id)
+        if existing:
+            if existing.statut == "present":
+                return {"message": "Présence déjà enregistrée", "seance": seance.typeSeance}
+            previous_statut = existing.statut
+            existing.statut = "present"
+            existing.updatedAt = now
+            await existing.save()
+            return {"message": "Présence mise à jour (était " + previous_statut + ")", "seance": seance.typeSeance}
+        else:
+            # Créer nouvelle absence marquée 'present'
+            abs_doc = Absence(
+                statut="present",
+                studentId=student.id,
+                seanceId=seance.id,
+                createdAt=now,
+                updatedAt=now
+            )
+            await abs_doc.insert()
+            return {"message": "Présence validée avec succès", "seance": seance.typeSeance}
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Erreur serveur: {str(e)}")
 
 
 @router.get("/absences")
@@ -143,36 +199,7 @@ async def my_absences(current=Depends(require_role("student"))):
         })
     return results
 
-@router.get("/{seance_id}")
-def get_seance_by_id(seance_id: str):
-    # 1) validate ObjectId
-    try:
-        oid = ObjectId(seance_id)
-    except:
-        raise HTTPException(status_code=400, detail="ID séance invalide")
-
-    # 2) find seance
-    seance = db.seances.find_one({"_id": oid})
-    if not seance:
-        raise HTTPException(status_code=404, detail="Séance introuvable")
-
-    # 3) find module via moduleId
-    module_doc = None
-    if seance.get("moduleId"):
-        module_doc = db.modules.find_one({"_id": seance["moduleId"]})
-
-    # 4) return frontend DTO
-    return {
-        "id": str(seance["_id"]),
-        "dateSeance": seance.get("dateSeance"),
-        "heureDebut": seance.get("heureDebut"),
-        "heureFin": seance.get("heureFin"),
-        "typeSeance": seance.get("typeSeance"),
-        "salle": seance.get("salle"),
-        "module": {
-            "id": to_str_oid(module_doc["_id"]) if module_doc else None,
-            "codeModule": module_doc.get("codeModule") if module_doc else None,
-            "titre": module_doc.get("titre") if module_doc else None,
-            "semestre": module_doc.get("semestre") if module_doc else None,
-        }
-    }
+# @router.get("/{seance_id}")
+# def get_seance_by_id(seance_id: str):
+#     # Broken function removed
+#     pass

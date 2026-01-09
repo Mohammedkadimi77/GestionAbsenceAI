@@ -18,3 +18,9 @@ export async function submitJustificationForm({ absenceId, raison, file }) {
 
   return res.data;
 }
+
+// ✅ Scanner QR
+export async function scanQR(qrToken) {
+  const res = await http.post("/student/scan", { qrToken });
+  return res.data;
+}

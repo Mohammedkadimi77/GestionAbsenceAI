@@ -23,3 +23,9 @@ export async function submitAttendance(seanceId, payload) {
   const res = await http.post(`/teacher/seances/${seanceId}/attendance`, payload);
   return res.data;
 }
+
+// ✅ Générer QR Token
+export async function generateQR(seanceId) {
+  const res = await http.post(`/teacher/seances/${seanceId}/qr`);
+  return res.data;
+}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import AppLayout from "../../layouts/AppLayout";
 import { fetchMyAbsences, submitJustificationForm } from "../../api/student";
+import StudentScan from "./StudentScan";
 
 const STATUS = {
   PRESENT: "present",
@@ -17,6 +18,7 @@ export default function StudentDashboard() {
   const [err, setErr] = useState("");
 
   const [open, setOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [target, setTarget] = useState(null);
   const [raison, setRaison] = useState("");
   const [file, setFile] = useState(null);
@@ -102,6 +104,15 @@ export default function StudentDashboard() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             Actualiser
+            Actualiser
+          </button>
+
+          <button
+            onClick={() => setScanning(true)}
+            className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100 gap-2 active:scale-95"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
+            Scanner Présence
           </button>
         </div>
 
@@ -275,8 +286,23 @@ export default function StudentDashboard() {
             </form>
           </div>
         </div>
-      )}
-    </AppLayout>
+      )
+      }
+
+      {/* QR Scanner Modal */}
+      {
+        scanning && (
+          <StudentScan
+            onClose={() => setScanning(false)}
+            onScanSuccess={(res) => {
+              setScanning(false);
+              alert(res?.message || "Présence validée !");
+              load();
+            }}
+          />
+        )
+      }
+    </AppLayout >
   );
 }
 

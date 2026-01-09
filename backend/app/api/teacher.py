@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from beanie import PydanticObjectId
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional
+import secrets
 from pydantic import BaseModel
 from app.db.mongo import get_db 
 
@@ -115,6 +116,33 @@ async def submit_attendance(seance_id: str, payload: AttendanceSubmit, current=D
             created += 1
 
     return {"created": created, "updated": updated, "total_received": len(payload.items)}
+
+# ✅ Générer un QR Code (Token) valable 10 minutes
+@router.post("/seances/{seance_id}/qr")
+async def generate_qr_code(seance_id: str, current=Depends(require_role("teacher"))):
+    teacher = current["user"]
+    seance = await Seance.get(PydanticObjectId(seance_id))
+    if not seance:
+        raise HTTPException(status_code=404, detail="Seance not found")
+    if seance.teacherId != teacher.id:
+        raise HTTPException(status_code=403, detail="Not your seance")
+
+    # Générer token unique
+    now = datetime.now(timezone.utc)
+    
+    # Si un token existe et est encore valide (> maintenant), on le renvoie tel quel
+    if seance.qrToken and seance.qrExpiresAt and seance.qrExpiresAt > now:
+        return {"qrToken": seance.qrToken, "expiresAt": seance.qrExpiresAt}
+
+    # Sinon, on en génère un nouveau
+    token = secrets.token_urlsafe(16)
+    expires = now + timedelta(minutes=10)
+
+    seance.qrToken = token
+    seance.qrExpiresAt = expires
+    await seance.save()
+
+    return {"qrToken": token, "expiresAt": expires}
 # =========================
 # Schemas (Response models)
 # =========================

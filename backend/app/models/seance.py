@@ -14,6 +14,10 @@ class Seance(Document):
     teacherId: PydanticObjectId
     groupId: PydanticObjectId
 
+    # QR Code fields
+    qrToken: str | None = None
+    qrExpiresAt: datetime | None = None
+
     createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updatedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
