@@ -267,8 +267,8 @@ export default function AdminHome() {
                           </td>
                           <td className="px-6 py-5">
                             <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${j.statut === "validee" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
-                                j.statut === "refusee" ? "bg-rose-50 text-rose-600 border border-rose-100" :
-                                  "bg-slate-50 text-slate-500 border border-slate-100"
+                              j.statut === "refusee" ? "bg-rose-50 text-rose-600 border border-rose-100" :
+                                "bg-slate-50 text-slate-500 border border-slate-100"
                               }`}>
                               {j.statut}
                             </span>
@@ -286,7 +286,7 @@ export default function AdminHome() {
           </div>
         )}
       </div>
-    </AppLayout>
+    </AppLayout >
   );
 }
 
@@ -311,8 +311,8 @@ function TabBtn({ active, onClick, label, badge }) {
     <button
       onClick={onClick}
       className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${active
-          ? "bg-white text-indigo-600 shadow-sm"
-          : "text-slate-500 hover:text-slate-800"
+        ? "bg-white text-indigo-600 shadow-sm"
+        : "text-slate-500 hover:text-slate-800"
         }`}
     >
       {label}

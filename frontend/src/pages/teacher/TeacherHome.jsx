@@ -155,89 +155,89 @@ export default function TeacherHome() {
                     </button>
                 </div>
 
-                    {/* Form Column - Nouvelle Séance */}
-                    <div className="lg:col-span-4">
-                        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm sticky top-8">
-                            <h2 className="text-lg font-bold text-slate-800 mb-6 tracking-tight">Nouvelle Séance</h2>
-                            <form onSubmit={handleCreate} className="space-y-4">
-                                <FormItem label="Module">
-                                    <select
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
-                                        value={form.moduleId}
-                                        onChange={e => setForm({ ...form, moduleId: e.target.value })}
-                                        required
-                                    >
-                                        <option value="">Choisir un module...</option>
-                                        {modules.map(m => <option key={m.id} value={m.id}>{m.titre}</option>)}
-                                    </select>
-                                </FormItem>
+                {/* Form Column - Nouvelle Séance */}
+                <div className="lg:col-span-4">
+                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm sticky top-8">
+                        <h2 className="text-lg font-bold text-slate-800 mb-6 tracking-tight">Nouvelle Séance</h2>
+                        <form onSubmit={handleCreate} className="space-y-4">
+                            <FormItem label="Module">
+                                <select
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                                    value={form.moduleId}
+                                    onChange={e => setForm({ ...form, moduleId: e.target.value })}
+                                    required
+                                >
+                                    <option value="">Choisir un module...</option>
+                                    {modules.map(m => <option key={m.id} value={m.id}>{m.titre}</option>)}
+                                </select>
+                            </FormItem>
 
-                                <FormItem label="Groupe">
-                                    <select
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
-                                        value={form.groupId}
-                                        onChange={e => setForm({ ...form, groupId: e.target.value })}
-                                        required
-                                    >
-                                        <option value="">Choisir un groupe...</option>
-                                        {groups.map(g => <option key={g.id} value={g.id}>{g.nomGroupe}</option>)}
-                                    </select>
-                                </FormItem>
+                            <FormItem label="Groupe">
+                                <select
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                                    value={form.groupId}
+                                    onChange={e => setForm({ ...form, groupId: e.target.value })}
+                                    required
+                                >
+                                    <option value="">Choisir un groupe...</option>
+                                    {groups.map(g => <option key={g.id} value={g.id}>{g.nomGroupe}</option>)}
+                                </select>
+                            </FormItem>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <FormItem label="Date">
-                                        <input
-                                            type="date"
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:bg-white outline-none transition-all"
-                                            value={form.dateSeance}
-                                            onChange={e => setForm({ ...form, dateSeance: e.target.value })}
-                                            required
-                                        />
-                                    </FormItem>
-                                    <FormItem label="Type">
-                                        <select
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:bg-white outline-none transition-all"
-                                            value={form.typeSeance}
-                                            onChange={e => setForm({ ...form, typeSeance: e.target.value })}
-                                        >
-                                            <option value="cours">Cours</option>
-                                            <option value="td">TD</option>
-                                            <option value="tp">TP</option>
-                                        </select>
-                                    </FormItem>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <FormItem label="Début">
-                                        <input type="time" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:bg-white outline-none" value={form.heureDebut} onChange={e => setForm({ ...form, heureDebut: e.target.value })} required />
-                                    </FormItem>
-                                    <FormItem label="Fin">
-                                        <input type="time" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:bg-white outline-none" value={form.heureFin} onChange={e => setForm({ ...form, heureFin: e.target.value })} required />
-                                    </FormItem>
-                                </div>
-
-                                <FormItem label="Salle">
+                            <div className="grid grid-cols-2 gap-4">
+                                <FormItem label="Date">
                                     <input
-                                        type="text"
-                                        placeholder="Ex: Salle 10..."
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
-                                        value={form.salle}
-                                        onChange={e => setForm({ ...form, salle: e.target.value })}
+                                        type="date"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:bg-white outline-none transition-all"
+                                        value={form.dateSeance}
+                                        onChange={e => setForm({ ...form, dateSeance: e.target.value })}
+                                        required
                                     />
                                 </FormItem>
+                                <FormItem label="Type">
+                                    <select
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:bg-white outline-none transition-all"
+                                        value={form.typeSeance}
+                                        onChange={e => setForm({ ...form, typeSeance: e.target.value })}
+                                    >
+                                        <option value="cours">Cours</option>
+                                        <option value="td">TD</option>
+                                        <option value="tp">TP</option>
+                                    </select>
+                                </FormItem>
+                            </div>
 
-                                <button
-                                    type="submit"
-                                    disabled={creating}
-                                    className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-md shadow-indigo-100 hover:bg-indigo-700 active:scale-[0.98] transition-all mt-4"
-                                >
-                                    {creating ? "Création..." : "Ajouter la séance"}
-                                </button>
-                            </form>
-                        </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <FormItem label="Début">
+                                    <input type="time" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:bg-white outline-none" value={form.heureDebut} onChange={e => setForm({ ...form, heureDebut: e.target.value })} required />
+                                </FormItem>
+                                <FormItem label="Fin">
+                                    <input type="time" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:bg-white outline-none" value={form.heureFin} onChange={e => setForm({ ...form, heureFin: e.target.value })} required />
+                                </FormItem>
+                            </div>
+
+                            <FormItem label="Salle">
+                                <input
+                                    type="text"
+                                    placeholder="Ex: Salle 10..."
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                                    value={form.salle}
+                                    onChange={e => setForm({ ...form, salle: e.target.value })}
+                                />
+                            </FormItem>
+
+                            <button
+                                type="submit"
+                                disabled={creating}
+                                className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-md shadow-indigo-100 hover:bg-indigo-700 active:scale-[0.98] transition-all mt-4"
+                            >
+                                {creating ? "Création..." : "Ajouter la séance"}
+                            </button>
+                        </form>
                     </div>
+                </div>
 
-                    
+
 
                 {/* Attendance Modal */}
                 {openAttend && (
@@ -311,7 +311,7 @@ export default function TeacherHome() {
                     </div>
                 )}
             </div>
-        </AppLayout>
+        </AppLayout >
     );
 }
 
@@ -340,8 +340,8 @@ function AttBtn({ active, color, label, onClick }) {
         <button
             onClick={onClick}
             className={`w-9 h-9 rounded-lg font-bold text-xs transition-all ${active
-                    ? `${color} text-white shadow-md active:scale-95`
-                    : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-indigo-50 hover:text-indigo-500'}`}
+                ? `${color} text-white shadow-md active:scale-95`
+                : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-indigo-50 hover:text-indigo-500'}`}
         >
             {label}
         </button>

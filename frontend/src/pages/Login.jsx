@@ -119,6 +119,10 @@ export default function Login() {
               />
               <span className="text-sm text-slate-600 group-hover:text-blue-600 transition-colors">Se souvenir de moi</span>
             </label>
+
+            <a href="/forgot-password" className="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-all">
+              Mot de passe oublié ?
+            </a>
           </div>
 
           <button
@@ -142,7 +146,7 @@ export default function Login() {
               Application de gestion d'absence
             </p>
             <p className="text-center text-[10px] text-slate-400 uppercase tracking-widest">
-              v2.0 • Absence Tracker
+              2026
             </p>
           </div>
         </form>

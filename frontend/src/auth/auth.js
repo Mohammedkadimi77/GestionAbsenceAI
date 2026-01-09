@@ -31,3 +31,13 @@ export function getUserId() {
   return localStorage.getItem("user_id");
 }
 
+
+export async function forgotPasswordRequest(email) {
+  const res = await http.post("/auth/forgot-password", { email });
+  return res.data;
+}
+
+export async function resetPasswordRequest(token, new_password) {
+  const res = await http.post("/auth/reset-password", { token, new_password });
+  return res.data;
+}

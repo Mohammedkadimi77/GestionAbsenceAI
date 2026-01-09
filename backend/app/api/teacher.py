@@ -121,7 +121,13 @@ async def submit_attendance(seance_id: str, payload: AttendanceSubmit, current=D
 @router.post("/seances/{seance_id}/qr")
 async def generate_qr_code(seance_id: str, current=Depends(require_role("teacher"))):
     teacher = current["user"]
-    seance = await Seance.get(PydanticObjectId(seance_id))
+    # Validation ID
+    try:
+        s_oid = PydanticObjectId(seance_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid Seance ID")
+
+    seance = await Seance.get(s_oid)
     if not seance:
         raise HTTPException(status_code=404, detail="Seance not found")
     if seance.teacherId != teacher.id:
@@ -131,8 +137,14 @@ async def generate_qr_code(seance_id: str, current=Depends(require_role("teacher
     now = datetime.now(timezone.utc)
     
     # Si un token existe et est encore valide (> maintenant), on le renvoie tel quel
-    if seance.qrToken and seance.qrExpiresAt and seance.qrExpiresAt > now:
-        return {"qrToken": seance.qrToken, "expiresAt": seance.qrExpiresAt}
+    if seance.qrToken and seance.qrExpiresAt:
+        # Ensure aware comparison to avoid TypeError
+        exp = seance.qrExpiresAt
+        if exp.tzinfo is None:
+            exp = exp.replace(tzinfo=timezone.utc)
+            
+        if exp > now:
+            return {"qrToken": seance.qrToken, "expiresAt": seance.qrExpiresAt}
 
     # Sinon, on en génère un nouveau
     token = secrets.token_urlsafe(16)
@@ -141,6 +153,10 @@ async def generate_qr_code(seance_id: str, current=Depends(require_role("teacher
     seance.qrToken = token
     seance.qrExpiresAt = expires
     await seance.save()
+
+    print(f"[DEBUG GEN QR] New Token: {token}")
+    print(f"[DEBUG GEN QR] Now: {now}")
+    print(f"[DEBUG GEN QR] Expires: {expires}")
 
     return {"qrToken": token, "expiresAt": expires}
 # =========================

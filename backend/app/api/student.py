@@ -121,10 +121,17 @@ async def scan_qr_code(payload: QRSubmit, current=Depends(require_role("student"
     if not seance:
         raise HTTPException(status_code=404, detail="Code QR invalide")
     
-    # Ensure timezone awareness for comparison
     expires_at = seance.qrExpiresAt
+    if not expires_at:
+        raise HTTPException(status_code=400, detail="Code QR non actif")
+
     if expires_at and expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    print(f"[DEBUG SCAN] Token: {token}")
+    print(f"[DEBUG SCAN] ExpiresAt (DB): {expires_at} | TzAware: {expires_at.tzinfo}")
+    print(f"[DEBUG SCAN] Now (UTC): {now} | TzAware: {now.tzinfo}")
+    print(f"[DEBUG SCAN] Expires < Now? {expires_at < now}")
 
     if expires_at < now:
         raise HTTPException(status_code=400, detail="Ce code QR a expiré")
