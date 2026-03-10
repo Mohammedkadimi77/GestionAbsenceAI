@@ -1,10 +1,13 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Optional
 
 class Settings(BaseSettings):
+    # MongoDB Settings
     MONGO_URI: str = "mongodb://localhost:27017"
     MONGO_DB: str = "absence_db"
 
-    JWT_SECRET: str = "CHANGE_ME_SUPER_SECRET"
+    # JWT Settings
+    JWT_SECRET: str
     JWT_ALG: str = "HS256"
     ACCESS_TOKEN_MINUTES: int = 60
     REFRESH_TOKEN_DAYS: int = 7
@@ -12,9 +15,18 @@ class Settings(BaseSettings):
     # SMTP Settings (Email)
     SMTP_SERVER: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
-    SMTP_USER: str = "kadimimohammed07@gmail.com"
-    SMTP_PASSWORD: str = "r d w t t m o s z z e h j b r h"
+    SMTP_USER: str
+    SMTP_PASSWORD: str
     EMAILS_FROM_NAME: str = "Gestion Absence AI"
-    GEMINI_API_KEY: str = "AIzaSyBPuV7eD5m6jwfcIOSOROvDfrI0aNPm9mA"
+
+    # Gemini API Settings
+    GEMINI_API_KEY: str
+
+    # Pydantic Settings Configuration
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True
+    )
 
 settings = Settings()
