@@ -7,6 +7,7 @@ class Group(Document):
     nomGroupe: str
     niveau: str
     filiere: str
+    emploiDuTemps: str | None = None  # ✅ Path vers l'image de l'emploi du temps
 
     createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updatedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

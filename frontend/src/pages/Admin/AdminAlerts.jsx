@@ -1,207 +1,323 @@
-import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { listAlerts, generateAIAlerts } from "../../api/admin";
+import { listAlerts, generateAIAlerts, deleteAlert, sendMessage } from "../../api/admin";
 
-const pill = (s) => {
-    if (s === "nouvelle") return "bg-indigo-50 text-indigo-700 border-indigo-100";
-    if (s === "en_cours") return "bg-amber-50 text-amber-700 border-amber-100";
-    if (s === "traitee") return "bg-emerald-50 text-emerald-700 border-emerald-100";
-    return "bg-slate-50 text-slate-600 border-slate-100";
+const riskStyles = {
+  high: {
+    bg: "bg-rose-50",
+    text: "text-rose-600",
+    border: "border-rose-100",
+    label: "Risque Élevé",
+    icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+  },
+  medium: {
+    bg: "bg-amber-50",
+    text: "text-amber-600",
+    border: "border-amber-100",
+    label: "Risque Moyen",
+    icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+  },
+  low: {
+    bg: "bg-blue-50",
+    text: "text-blue-600",
+    border: "border-blue-100",
+    label: "Risque Faible",
+    icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+  }
 };
 
 export default function AdminAlerts() {
-    const [loading, setLoading] = useState(true);
-    const [err, setErr] = useState("");
-    const [alerts, setAlerts] = useState([]);
-    const [detecting, setDetecting] = useState(false);
-    const [msg, setMsg] = useState("");
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [detecting, setDetecting] = useState(false);
+  const [err, setErr] = useState("");
 
-    async function load() {
-        setErr("");
-        setLoading(true);
-        try {
-            const data = await listAlerts();
-            setAlerts(Array.isArray(data) ? data : []);
-        } catch (e) {
-            setErr(e?.response?.data?.detail || "Erreur de chargement");
-        } finally {
-            setLoading(false);
-        }
+  // Custom Confirm Modal State
+  const [confirmDelete, setConfirmDelete] = useState({ show: false, id: null });
+
+  // Contact Modal State
+  const [contact, setContact] = useState({ show: false, studentId: null, studentName: "", content: "" });
+  const [sending, setSending] = useState(false);
+
+  async function load() {
+    setErr("");
+    setLoading(true);
+    try {
+      const data = await listAlerts();
+      setAlerts(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Failed to load alerts", e);
+      setErr("Erreur lors du chargement des anomalies.");
+    } finally {
+      setLoading(false);
     }
+  }
 
-    async function handleDetect() {
-        setDetecting(true);
-        setMsg("");
-        try {
-            const res = await generateAIAlerts("30d");
-            setMsg(res.message);
-            load();
-        } catch (e) {
-            setErr("Erreur lors de la détection IA");
-        } finally {
-            setDetecting(false);
-        }
+  async function onDetect() {
+    setDetecting(true);
+    setErr("");
+    try {
+      await generateAIAlerts("30d");
+      await load();
+    } catch (e) {
+      console.error("Detection failed", e);
+      setErr(e?.response?.data?.detail || "Échec de la détection IA.");
+    } finally {
+      setDetecting(false);
     }
+  }
 
-    useEffect(() => {
-        load();
-    }, []);
+  async function confirmDeletion() {
+    const alertId = confirmDelete.id;
+    setConfirmDelete({ show: false, id: null });
+    try {
+      await deleteAlert(alertId);
+      setAlerts(prev => prev.filter(a => a.id !== alertId));
+    } catch (e) {
+      console.error("Delete failed", e);
+      alert("Erreur lors de la suppression.");
+    }
+  }
 
-    return (
-        <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700">
+  function openConfirm(id) {
+    setConfirmDelete({ show: true, id });
+  }
 
-            {/* Back Button */}
-            <Link
-                to="/admin"
-                className="inline-flex items-center gap-2 text-slate-400 hover:text-indigo-600 transition-colors group"
-            >
-                <div className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center group-hover:border-indigo-100 group-hover:bg-indigo-50 transition-all">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-                    </svg>
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-widest">Tableau de bord</span>
-            </Link>
+  async function handleSendMessage(e) {
+    e.preventDefault();
+    setSending(true);
+    try {
+      await sendMessage({ studentId: contact.studentId, content: contact.content });
+      setContact({ show: false, studentId: null, studentName: "", content: "" });
+      alert("Message envoyé avec succès !");
+    } catch (e) {
+      console.error("Send message failed", e);
+      alert("Erreur lors de l'envoi du message.");
+    } finally {
+      setSending(false);
+    }
+  }
 
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-                <div>
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-3 border border-indigo-100">
-                        <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-600"></span>
-                        </span>
-                        Intelligence Artificielle
-                    </div>
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tight">
-                        Anomalies <span className="text-indigo-600">Détectées</span>
-                    </h1>
-                    <p className="text-slate-500 text-sm mt-2 max-w-md leading-relaxed font-medium">
-                        Surveillance automatique des comportements d'assiduité suspects.
-                    </p>
-                </div>
+  useEffect(() => { load(); }, []);
 
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={load}
-                        className="p-3 bg-white border border-slate-200 text-slate-400 rounded-xl hover:text-indigo-600 hover:border-indigo-100 hover:bg-slate-50 transition-all active:scale-95 group shadow-sm"
-                        title="Rafraîchir"
-                    >
-                        <svg className={`w-5 h-5 group-hover:rotate-180 transition-transform duration-500 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                    </button>
-
-                    <button
-                        onClick={handleDetect}
-                        disabled={detecting}
-                        className={`flex items-center gap-3 px-6 py-3 rounded-xl font-black text-sm transition-all shadow-lg
-              ${detecting
-                                ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
-                                : "bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 shadow-indigo-100 ring-4 ring-indigo-50"}`}
-                    >
-                        {detecting ? (
-                            <svg className="w-4 h-4 animate-spin outline-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                        ) : (
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
-                        )}
-                        {detecting ? "Analyse..." : "Lancer Détection"}
-                    </button>
-                </div>
-            </div>
-
-            {/* Messages */}
-            {(msg || err) && (
-                <div className="animate-in slide-in-from-top-4 duration-500">
-                    {msg && (
-                        <div className="p-4 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-2xl flex items-center gap-3 shadow-sm shadow-emerald-50/50">
-                            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                            </div>
-                            <span className="font-bold text-sm tracking-tight">{msg}</span>
-                        </div>
-                    )}
-                    {err && (
-                        <div className="p-4 bg-rose-50 border border-rose-100 text-rose-700 rounded-2xl flex items-center gap-3 shadow-sm">
-                            <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-600">
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </div>
-                            <span className="font-bold text-sm tracking-tight">{err}</span>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* List Content (Bar Style) */}
-            <div className="flex flex-col gap-3">
-                {loading ? (
-                    Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="h-20 bg-white rounded-2xl border border-slate-100 animate-pulse w-full"></div>
-                    ))
-                ) : alerts.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 px-6 bg-white rounded-[2.5rem] border border-slate-100 border-dashed">
-                        <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 mb-6">
-                            <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                        </div>
-                        <h3 className="text-xl font-bold text-slate-800">Aucune anomalie</h3>
-                        <p className="text-slate-400 text-sm mt-1 max-w-xs text-center font-medium">Tout semble en ordre !</p>
-                    </div>
-                ) : (
-                    alerts.map((a, i) => (
-                        <div
-                            key={a.id || a._id}
-                            className="group bg-white rounded-2xl border border-slate-200 p-4 md:px-6 md:py-4 hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-50/30 transition-all duration-300 animate-in fade-in slide-in-from-left-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
-                            style={{ animationDelay: `${i * 30}ms` }}
-                        >
-                            <div className="flex items-center gap-4 flex-1 min-w-0">
-                                <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center text-xs font-black shadow-lg shadow-slate-100">
-                                    {a.studentName?.charAt(0) || "U"}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2 mb-0.5">
-                                        <span className="text-sm font-black text-slate-900 truncate">{a.studentName || "Inconnu"}</span>
-                                        <span className={`px-2 py-0.5 rounded-md border text-[9px] font-black uppercase tracking-tighter ${pill(a.statut)}`}>
-                                            {a.statut}
-                                        </span>
-                                    </div>
-                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-                                        {a.typeAlerte || "Alerte Assiduité"}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Progress Bar (Bar aspect) */}
-                            <div className="flex-1 max-w-xs hidden sm:block px-4">
-                                <div className="flex items-center justify-between mb-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                    <span>Indice de Risque</span>
-                                    <span className="text-indigo-600">{(Number(a.scoreAnomalie ?? 0) * 100).toFixed(0)}%</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-indigo-600 rounded-full transition-all duration-1000 ease-out"
-                                        style={{ width: `${Math.min(Number(a.scoreAnomalie ?? 0) * 100, 100)}%` }}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-3 shrink-0">
-                                <div className="hidden lg:flex flex-col items-end mr-2">
-                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Score IA</span>
-                                    <span className="text-xs font-black text-slate-900">{(Number(a.scoreAnomalie ?? 0) * 100).toFixed(1)}%</span>
-                                </div>
-                                <button className="px-4 py-2 bg-slate-50 text-slate-600 border border-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all active:scale-95 shadow-sm">
-                                    Examiner
-                                </button>
-                            </div>
-                        </div>
-                    ))
-                )}
-            </div>
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div>
+          <h3 className="text-lg font-bold text-slate-800 tracking-tight">Intelligence Artificielle</h3>
+          <p className="text-sm text-slate-500 font-medium tracking-tight">Détectez les comportements atypiques et prévenez le décrochage.</p>
         </div>
-    );
+        <button
+          onClick={onDetect}
+          disabled={detecting}
+          className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+            detecting 
+            ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none" 
+            : "bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-100/50 active:scale-95 ring-4 ring-blue-50"
+          }`}
+        >
+          {detecting ? (
+            <>
+              <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin"></div>
+              Analyse en cours...
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+              Lancer la détection
+            </>
+          )}
+        </button>
+      </div>
+
+      {err && (
+        <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl text-rose-700 text-sm font-bold flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          {err}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="py-20 text-center">
+          <div className="w-10 h-10 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-400 font-medium">Chargement des anomalies...</p>
+        </div>
+      ) : alerts.length === 0 ? (
+        <div className="py-20 bg-white border border-slate-200 border-dashed rounded-3xl text-center">
+          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          </div>
+          <h4 className="text-slate-800 font-bold mb-1 tracking-tight">Aucune anomalie</h4>
+          <p className="text-slate-400 text-sm font-medium">Tout semble en ordre. Lancez une analyse pour vérifier.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {alerts.map((a) => {
+            const risk = riskStyles[a.riskLevel] || riskStyles.low;
+            return (
+              <div key={a.id} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:border-blue-300 transition-all flex flex-col justify-between group h-full">
+                <div>
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold border border-slate-100 shadow-inner">
+                        {a.studentName?.charAt(0) || "?"}
+                      </div>
+                      <div>
+                        <h5 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight leading-none text-[13px]">{a.studentName || "Inconnu"}</h5>
+                        <p className="text-[10px] text-slate-400 font-black uppercase mt-1 tracking-widest opacity-60">Étudiant</p>
+                      </div>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 border shadow-sm ${risk.bg} ${risk.text} ${risk.border}`}>
+                      {risk.icon}
+                      {risk.label}
+                    </span>
+                  </div>
+
+                  <div className="space-y-4 mb-6">
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 opacity-60 flex items-center gap-2">
+                        <span className="w-1 h-3 bg-slate-200 rounded-full"></span>
+                        Facteurs de risque
+                      </p>
+                      <ul className="space-y-2">
+                        {(a.reasons || []).map((reason, i) => (
+                          <li key={i} className="flex items-start gap-2.5 text-xs font-bold text-slate-700 leading-snug">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1 flex-shrink-0 shadow-sm shadow-blue-200"></span>
+                            {reason}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {a.metrics && (
+                      <div className="grid grid-cols-3 gap-2 pt-5 border-t border-slate-50 mt-2">
+                        <div className="text-center group/m">
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-tighter mb-1 transition-colors group-hover/m:text-blue-500">Absences</p>
+                          <p className="text-sm font-black text-slate-800">{Math.round(a.metrics.absent_rate * 100)}%</p>
+                        </div>
+                        <div className="text-center border-x border-slate-100 group/m">
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-tighter mb-1 transition-colors group-hover/m:text-blue-500">Retards</p>
+                          <p className="text-sm font-black text-slate-800">{Math.round(a.metrics.late_rate * 100)}%</p>
+                        </div>
+                        <div className="text-center group/m">
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-tighter mb-1 transition-colors group-hover/m:text-blue-500">Série</p>
+                          <p className="text-sm font-black text-slate-800">{a.metrics.max_streak}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-2.5 mt-2">
+                  <button 
+                    onClick={() => setContact({ show: true, studentId: a.studentId, studentName: a.studentName || "Inconnu", content: "" })}
+                    className="flex-1 py-3 bg-blue-50 text-blue-600 text-[10px] font-black rounded-xl hover:bg-blue-600 hover:text-white hover:shadow-lg hover:shadow-blue-100 transition-all uppercase tracking-widest"
+                  >
+                    Contacter
+                  </button>
+                  <button 
+                    onClick={() => openConfirm(a.id)}
+                    className="px-3.5 py-3 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 border border-transparent transition-all shadow-sm active:scale-95 group/trash"
+                    title="Supprimer l'alerte"
+                  >
+                    <svg className="w-4 h-4 transition-transform group-hover/trash:-rotate-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Custom Confirm Modal */}
+      {confirmDelete.show && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-100">
+            <div className="p-8 text-center">
+              <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-rose-100">
+                 <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                 </svg>
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Confirmer la suppression</h3>
+              <p className="text-slate-500 text-sm font-medium leading-relaxed">
+                Êtes-vous sûr de vouloir supprimer cette anomalie ? Cette action est irréversible.
+              </p>
+            </div>
+            <div className="p-6 bg-slate-50/50 border-t border-slate-100 flex gap-3">
+              <button 
+                onClick={() => setConfirmDelete({ show: false, id: null })}
+                className="flex-1 py-3 bg-white border border-slate-200 rounded-xl text-slate-600 text-xs font-bold uppercase tracking-widest hover:bg-slate-50 transition-all active:scale-95"
+              >
+                Annuler
+              </button>
+              <button 
+                onClick={confirmDeletion}
+                className="flex-1 py-3 bg-rose-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-rose-700 shadow-lg shadow-rose-200 transition-all active:scale-95"
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Contact Modal */}
+      {contact.show && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-100">
+            <div className="p-8 border-b border-slate-50 bg-slate-50/30">
+              <div className="flex items-center justify-between">
+                <div>
+                   <h3 className="text-xl font-bold text-slate-900 leading-tight">Envoyer un message</h3>
+                   <p className="text-blue-600 text-[10px] font-black uppercase tracking-widest mt-1 opacity-80">À: {contact.studentName}</p>
+                </div>
+                <button 
+                  onClick={() => setContact({ show: false, studentId: null, studentName: "", content: "" })}
+                  className="p-2 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-rose-500 transition-all"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+            </div>
+            <form onSubmit={handleSendMessage} className="p-8 space-y-6">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block opacity-60">Votre message</label>
+                <textarea 
+                  required
+                  rows={5}
+                  value={contact.content}
+                  onChange={(e) => setContact(prev => ({ ...prev, content: e.target.value }))}
+                  placeholder="Tapez votre message ici..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all resize-none shadow-inner"
+                />
+              </div>
+              <div className="flex gap-4 pt-2">
+                <button 
+                  type="button"
+                  onClick={() => setContact({ show: false, studentId: null, studentName: "", content: "" })}
+                  className="flex-1 py-4 bg-white border border-slate-200 rounded-xl text-slate-600 text-[11px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all active:scale-95"
+                >
+                  Annuler
+                </button>
+                <button 
+                  type="submit"
+                  disabled={sending}
+                  className="flex-1 py-4 bg-blue-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all active:scale-95 flex items-center justify-center gap-2"
+                >
+                  {sending ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                      Envoyer
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

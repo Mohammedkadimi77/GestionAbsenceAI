@@ -10,6 +10,9 @@ class Alert(Document):
     periodEnd: datetime
 
     statut: str = "nouvelle"  # nouvelle | en_cours | traitee
+    riskLevel: str = "low"    # low | medium | high
+    reasons: list[str] = []
+    metrics: dict = {}
 
     studentId: PydanticObjectId
     adminId: PydanticObjectId | None = None

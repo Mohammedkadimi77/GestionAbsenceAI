@@ -12,38 +12,10 @@ from app.models.absence import Absence
 from app.models.seance import Seance
 from app.models.module import Module
 from app.models.user_student import Student
+from app.models.user_teacher import Teacher
+from app.models.message import Message
 
 router = APIRouter(prefix="/student", tags=["Student"], dependencies=[Depends(require_role("student"))])
-
-# @router.post("/justifications")
-# async def submit_justification(payload: StudentJustificationCreate, student=Depends(require_role("student"))):
-#     absence = await Absence.get(PydanticObjectId(payload.absenceId))
-#     if not absence:
-#         raise HTTPException(status_code=404, detail="Absence not found")
-
-#     # sécurité: l’étudiant ne justifie que SES absences
-#     student_id = student.get("sub")
-#     if str(absence.studentId) != str(student_id):
-#         raise HTTPException(status_code=403, detail="Not allowed")
-
-#     existing = await Justification.find_one(Justification.absenceId == absence.id)
-#     if existing:
-#         raise HTTPException(status_code=400, detail="Justification already submitted")
-
-#     now = datetime.now(timezone.utc)
-#     justif = Justification(
-#         raison=payload.raison,
-#         fichier=payload.fichier,
-#         statut="en_attente",
-#         submittedAt=now,
-#         decisionAt=None,
-#         absenceId=absence.id,
-#         decidedByAdminId=None,
-#     )
-#     await justif.insert()
-#     return {"message": "Justification submitted", "id": str(justif.id)}
-
-
 
 UPLOAD_DIR = Path("uploads/justifications")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -55,7 +27,6 @@ async def submit_justification(
     file: UploadFile | None = File(None),
     student=Depends(require_role("student")),
 ):
-    # Absence
     try:
         absence_obj_id = PydanticObjectId(absenceId)
     except Exception:
@@ -65,17 +36,14 @@ async def submit_justification(
     if not absence:
         raise HTTPException(status_code=404, detail="Absence not found")
 
-    # Sécurité
     student_id = student.get("sub")
     if str(absence.studentId) != str(student_id):
         raise HTTPException(status_code=403, detail="Not allowed")
 
-    # Une seule justification
     existing = await Justification.find_one(Justification.absenceId == absence.id)
     if existing:
         raise HTTPException(status_code=400, detail="Justification already submitted")
 
-    # Save file (STRING)
     saved_path: str | None = None
     if file:
         ext = Path(file.filename).suffix.lower() if file.filename else ""
@@ -85,16 +53,14 @@ async def submit_justification(
 
         unique_name = f"{uuid.uuid4().hex}{ext}"
         dest_path = UPLOAD_DIR / unique_name
-
         content = await file.read()
         dest_path.write_bytes(content)
-
-        saved_path = str(dest_path).replace("\\", "/")  # ✅ string
+        saved_path = str(dest_path).replace("\\", "/")
 
     now = datetime.now(timezone.utc)
     justif = Justification(
         raison=raison,
-        fichier=saved_path,          # ✅ string ou None
+        fichier=saved_path,
         statut="en_attente",
         submittedAt=now,
         decisionAt=None,
@@ -104,7 +70,6 @@ async def submit_justification(
     await justif.insert()
     return {"message": "Justificatif soumis"}
 
-# ✅ Scanner un QR Code pour marquer présence
 class QRSubmit(BaseModel):
     qrToken: str
 
@@ -113,9 +78,6 @@ async def scan_qr_code(payload: QRSubmit, current=Depends(require_role("student"
     student = current["user"]
     token = payload.qrToken
     now = datetime.now(timezone.utc)
-
-    # 1. Trouver la séance avec ce token valide
-    # Note: On doit vérifier manuellement l'expiration car MongoDB requête simple
     seance = await Seance.find_one(Seance.qrToken == token)
     
     if not seance:
@@ -128,19 +90,12 @@ async def scan_qr_code(payload: QRSubmit, current=Depends(require_role("student"
     if expires_at and expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
 
-    print(f"[DEBUG SCAN] Token: {token}")
-    print(f"[DEBUG SCAN] ExpiresAt (DB): {expires_at} | TzAware: {expires_at.tzinfo}")
-    print(f"[DEBUG SCAN] Now (UTC): {now} | TzAware: {now.tzinfo}")
-    print(f"[DEBUG SCAN] Expires < Now? {expires_at < now}")
-
     if expires_at < now:
         raise HTTPException(status_code=400, detail="Ce code QR a expiré")
 
-    # 2. Vérifier que l'étudiant est bien dans le groupe de la séance
     if student.groupId != seance.groupId:
         raise HTTPException(status_code=403, detail="Vous n'appartenez pas à ce groupe")
 
-    # 3. Marquer présence (upsert)
     try:
         existing = await Absence.find_one(Absence.studentId == student.id, Absence.seanceId == seance.id)
         if existing:
@@ -152,7 +107,6 @@ async def scan_qr_code(payload: QRSubmit, current=Depends(require_role("student"
             await existing.save()
             return {"message": "Présence mise à jour (était " + previous_statut + ")", "seance": seance.typeSeance}
         else:
-            # Créer nouvelle absence marquée 'present'
             abs_doc = Absence(
                 statut="present",
                 studentId=student.id,
@@ -163,13 +117,11 @@ async def scan_qr_code(payload: QRSubmit, current=Depends(require_role("student"
             await abs_doc.insert()
             return {"message": "Présence validée avec succès", "seance": seance.typeSeance}
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Erreur serveur: {str(e)}")
-
 
 @router.get("/absences")
 async def my_absences(current=Depends(require_role("student"))):
+    # Fixed the typo in the name from previous version if it existed
     student_id = current["user"].id
     absences = await Absence.find(Absence.studentId == student_id).to_list()
     
@@ -206,7 +158,59 @@ async def my_absences(current=Depends(require_role("student"))):
         })
     return results
 
-# @router.get("/{seance_id}")
-# def get_seance_by_id(seance_id: str):
-#     # Broken function removed
-#     pass
+from app.models.group import Group
+import os
+
+@router.get("/timetable")
+async def get_timetable(current=Depends(require_role("student"))):
+    student = current["user"]
+    group_id = student.groupId
+    
+    group = await Group.get(group_id)
+    timetable_url = None
+    if group and group.emploiDuTemps:
+        fname = os.path.basename(group.emploiDuTemps)
+        timetable_url = f"http://localhost:8000/uploads/timetables/{fname}"
+
+    seances = await Seance.find(Seance.groupId == group_id).to_list()
+    
+    results = []
+    for s in seances:
+        module = await Module.get(s.moduleId)
+        teacher = await Teacher.get(s.teacherId)
+        
+        results.append({
+            "id": str(s.id),
+            "dateSeance": str(s.dateSeance),
+            "heureDebut": s.heureDebut,
+            "heureFin": s.heureFin,
+            "typeSeance": s.typeSeance,
+            "salle": s.salle,
+            "module": {
+                "titre": module.titre if module else "Inconnu",
+                "code": module.codeModule if module else "???"
+            },
+            "teacher": {
+                "nom": teacher.nom if teacher else "Inconnu",
+                "prenom": teacher.prenom if teacher else ""
+            }
+        })
+    
+    results.sort(key=lambda x: (x["dateSeance"], x["heureDebut"]))
+    return {
+        "groupsTimetableUrl": timetable_url,
+        "sessions": results
+    }
+
+@router.get("/messages")
+async def list_messages(current=Depends(require_role("student"))):
+    student_id = current["user"].id
+    messages = await Message.find(Message.receiverId == student_id).sort(-Message.createdAt).to_list()
+    enriched = []
+    for m in messages:
+        item = m.dict()
+        item["id"] = str(m.id)
+        item["senderId"] = str(m.senderId)
+        item["receiverId"] = str(m.receiverId)
+        enriched.append(item)
+    return enriched

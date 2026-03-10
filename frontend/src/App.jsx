@@ -1,12 +1,15 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
+import Home from "./pages/Home";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import ProtectedRoute from "./auth/ProtectedRoute";
+import AppLayout from "./layouts/AppLayout";
 
 import AdminHome from "./pages/Admin/AdminHome";
 import TeacherHome from "./pages/teacher/TeacherHome";
 import StudentHome from "./pages/student/StudentHome";
+import StudentTimetable from "./pages/student/StudentTimetable";
 import TeacherSeances from "./pages/teacher/TeacherSeances";
 import AdminAlerts from "./pages/Admin/AdminAlerts";
 
@@ -14,6 +17,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
@@ -30,7 +34,9 @@ export default function App() {
           path="/admin/alerts"
           element={
             <ProtectedRoute roles={["admin"]}>
-              <AdminAlerts />
+              <AppLayout>
+                <AdminAlerts />
+              </AppLayout>
             </ProtectedRoute>
           }
         />
@@ -57,6 +63,15 @@ export default function App() {
           element={
             <ProtectedRoute roles={["student"]}>
               <StudentHome />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/student/timetable"
+          element={
+            <ProtectedRoute roles={["student"]}>
+              <StudentTimetable />
             </ProtectedRoute>
           }
         />

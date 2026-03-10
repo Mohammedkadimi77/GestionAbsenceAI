@@ -145,12 +145,12 @@ export default function TeacherHome() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                     <div>
                         <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
-                            Espace <span className="text-indigo-600">Enseignant</span>
+                            Espace <span className="text-blue-600">Enseignant</span>
                         </h1>
                         <p className="text-slate-500 text-sm mt-1">Gérez vos séances et faites l'appel simplement.</p>
                     </div>
-                    <button onClick={loadSeances} className="inline-flex items-center px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-indigo-300 transition-all shadow-sm gap-2">
-                        <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    <button onClick={loadSeances} className="inline-flex items-center px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-blue-300 transition-all shadow-sm gap-2">
+                        <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                         Rafraîchir
                     </button>
                 </div>
@@ -162,7 +162,7 @@ export default function TeacherHome() {
                         <form onSubmit={handleCreate} className="space-y-4">
                             <FormItem label="Module">
                                 <select
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
                                     value={form.moduleId}
                                     onChange={e => setForm({ ...form, moduleId: e.target.value })}
                                     required
@@ -174,7 +174,7 @@ export default function TeacherHome() {
 
                             <FormItem label="Groupe">
                                 <select
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
                                     value={form.groupId}
                                     onChange={e => setForm({ ...form, groupId: e.target.value })}
                                     required
@@ -220,7 +220,7 @@ export default function TeacherHome() {
                                 <input
                                     type="text"
                                     placeholder="Ex: Salle 10..."
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
                                     value={form.salle}
                                     onChange={e => setForm({ ...form, salle: e.target.value })}
                                 />
@@ -229,7 +229,7 @@ export default function TeacherHome() {
                             <button
                                 type="submit"
                                 disabled={creating}
-                                className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-md shadow-indigo-100 hover:bg-indigo-700 active:scale-[0.98] transition-all mt-4"
+                                className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl shadow-md shadow-blue-100 hover:bg-blue-700 active:scale-[0.98] transition-all mt-4"
                             >
                                 {creating ? "Création..." : "Ajouter la séance"}
                             </button>
@@ -260,13 +260,13 @@ export default function TeacherHome() {
                             <div className="p-8 max-h-[60vh] overflow-y-auto">
                                 {attLoading ? (
                                     <div className="text-center py-10">
-                                        <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
+                                        <div className="w-8 h-8 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
                                         <p className="text-slate-400 text-sm font-medium">Chargement des étudiants...</p>
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {students.map(st => (
-                                            <div key={st.id || st._id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-indigo-100 transition-colors shadow-sm">
+                                            <div key={st.id || st._id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-blue-100 transition-colors shadow-sm">
                                                 <div>
                                                     <p className="font-bold text-slate-800 text-sm">{st.nom} {st.prenom}</p>
                                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{st.CIN || st.cin || '-'}</p>
@@ -302,7 +302,7 @@ export default function TeacherHome() {
                                 <button
                                     onClick={submitAtt}
                                     disabled={saving}
-                                    className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all text-xs uppercase tracking-widest"
+                                    className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-100 hover:bg-blue-700 active:scale-95 transition-all text-xs uppercase tracking-widest"
                                 >
                                     {saving ? "Envoi..." : "Valider l'appel"}
                                 </button>
@@ -341,7 +341,7 @@ function AttBtn({ active, color, label, onClick }) {
             onClick={onClick}
             className={`w-9 h-9 rounded-lg font-bold text-xs transition-all ${active
                 ? `${color} text-white shadow-md active:scale-95`
-                : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-indigo-50 hover:text-indigo-500'}`}
+                : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-blue-50 hover:text-blue-500'}`}
         >
             {label}
         </button>

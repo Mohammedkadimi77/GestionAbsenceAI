@@ -12,6 +12,7 @@ from app.api.admin_import import router as admin_import_router
 from app.api.student import router as student_router
 from app.api.ai_explain import router as ai_explain_router
 from app.api.ai_train import router as ai_train_router
+from app.api.chatbot import router as chatbot_router
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -39,6 +40,7 @@ app.include_router(admin_import_router)
 app.include_router(student_router)
 app.include_router(ai_explain_router)
 app.include_router(ai_train_router)
+app.include_router(chatbot_router)
 
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

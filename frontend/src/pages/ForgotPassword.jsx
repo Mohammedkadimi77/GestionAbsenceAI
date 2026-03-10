@@ -27,9 +27,9 @@ export default function ForgotPassword() {
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
             <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
-                <div className="bg-indigo-600 p-8 text-center text-white">
+                <div className="bg-blue-600 p-8 text-center text-white">
                     <h2 className="text-2xl font-bold">Récupération</h2>
-                    <p className="text-indigo-100 mt-1">Entrez votre email pour continuer</p>
+                    <p className="text-blue-100 mt-1">Entrez votre email pour continuer</p>
                 </div>
 
                 <form onSubmit={onSubmit} className="p-8 space-y-6">
@@ -52,7 +52,7 @@ export default function ForgotPassword() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
-                                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 placeholder="votre@email.com"
                             />
                         </div>
@@ -62,14 +62,14 @@ export default function ForgotPassword() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all disabled:opacity-70"
+                            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all disabled:opacity-70"
                         >
                             {loading ? "Envoi..." : "Envoyer le lien"}
                         </button>
                     )}
 
                     <div className="text-center pt-4">
-                        <Link to="/login" className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors">
+                        <Link to="/login" className="text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors">
                             Retour à la connexion
                         </Link>
                     </div>

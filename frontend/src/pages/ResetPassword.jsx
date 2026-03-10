@@ -48,7 +48,7 @@ export default function ResetPassword() {
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
             <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
-                <div className="bg-indigo-600 p-8 text-center text-white">
+                <div className="bg-blue-600 p-8 text-center text-white">
                     <h2 className="text-2xl font-bold">Nouveau mot de passe</h2>
                 </div>
 
@@ -73,7 +73,7 @@ export default function ResetPassword() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
-                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     placeholder="••••••••"
                                     minLength={4}
                                 />
@@ -86,7 +86,7 @@ export default function ResetPassword() {
                                     value={confirm}
                                     onChange={(e) => setConfirm(e.target.value)}
                                     required
-                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     placeholder="••••••••"
                                 />
                             </div>
@@ -94,7 +94,7 @@ export default function ResetPassword() {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all disabled:opacity-70"
+                                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all disabled:opacity-70"
                             >
                                 {loading ? "Modification..." : "Modifier le mot de passe"}
                             </button>

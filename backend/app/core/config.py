@@ -15,5 +15,6 @@ class Settings(BaseSettings):
     SMTP_USER: str = "kadimimohammed07@gmail.com"
     SMTP_PASSWORD: str = "r d w t t m o s z z e h j b r h"
     EMAILS_FROM_NAME: str = "Gestion Absence AI"
+    GEMINI_API_KEY: str = "AIzaSyBPuV7eD5m6jwfcIOSOROvDfrI0aNPm9mA"
 
 settings = Settings()

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AppLayout from "../../layouts/AppLayout";
-import { fetchMyAbsences, submitJustificationForm } from "../../api/student";
+import { fetchMyAbsences, submitJustificationForm, fetchMessages } from "../../api/student";
 import StudentScan from "./StudentScan";
+import Chatbot from "./Chatbot";
 
 const STATUS = {
   PRESENT: "present",
@@ -13,8 +15,10 @@ const STATUS = {
 const safe = (v, fallback = "—") => (v === null || v === undefined || v === "" ? fallback : v);
 
 export default function StudentDashboard() {
+  const navigate = useNavigate();
   const [absences, setAbsences] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [messages, setMessages] = useState([]);
   const [err, setErr] = useState("");
 
   const [open, setOpen] = useState(false);
@@ -25,6 +29,7 @@ export default function StudentDashboard() {
   const [sending, setSending] = useState(false);
   const [jErr, setJErr] = useState("");
   const [jOk, setJOk] = useState("");
+  const [showNotifications, setShowNotifications] = useState(false);
 
   async function load() {
     setErr("");
@@ -32,8 +37,11 @@ export default function StudentDashboard() {
     try {
       const data = await fetchMyAbsences();
       setAbsences(Array.isArray(data) ? data : []);
+      
+      const msgData = await fetchMessages();
+      setMessages(Array.isArray(msgData) ? msgData : []);
     } catch (e) {
-      setErr(e?.response?.data?.detail || "Impossible de charger vos absences.");
+      setErr(e?.response?.data?.detail || "Impossible de charger vos données.");
     } finally {
       setLoading(false);
     }
@@ -92,28 +100,46 @@ export default function StudentDashboard() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
-              Tableau de bord <span className="text-indigo-600">Étudiant</span>
+              Tableau de bord <span className="text-blue-600">Étudiant</span>
             </h1>
             <p className="text-slate-500 text-sm mt-1">Gérez vos présences et vos justifications simplement.</p>
           </div>
           <button
             onClick={load}
-            className="inline-flex items-center px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-indigo-300 transition-all shadow-sm gap-2"
+            className="inline-flex items-center px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-blue-300 transition-all shadow-sm gap-2"
           >
-            <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             Actualiser
-            Actualiser
           </button>
 
-          <button
-            onClick={() => setScanning(true)}
-            className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100 gap-2 active:scale-95"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
-            Scanner Présence
-          </button>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowNotifications(true)}
+              className="relative inline-flex items-center px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-blue-300 transition-all shadow-sm gap-2 active:scale-95"
+              title="Messages de l'administration"
+            >
+              <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              {messages.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white animate-bounce-slow">
+                  {messages.length}
+                </span>
+              )}
+              Notifications
+            </button>
+
+            <button
+              onClick={() => setScanning(true)}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-100 gap-2 active:scale-95"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
+              Scanner Présence
+            </button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -131,6 +157,7 @@ export default function StudentDashboard() {
           </div>
         )}
 
+
         {/* Main Content Table */}
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100">
@@ -139,7 +166,7 @@ export default function StudentDashboard() {
 
           {loading ? (
             <div className="py-20 flex flex-col items-center">
-              <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4" />
+              <div className="w-8 h-8 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-4" />
               <p className="text-slate-400 text-sm font-medium">Chargement des absences...</p>
             </div>
           ) : absences.length === 0 ? (
@@ -188,7 +215,7 @@ export default function StudentDashboard() {
                                     href={fileUrl}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-500 hover:text-indigo-700 uppercase tracking-tight transition-colors"
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-500 hover:text-blue-700 uppercase tracking-tight transition-colors"
                                   >
                                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -207,7 +234,7 @@ export default function StudentDashboard() {
                               disabled={!!jStatut}
                               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${jStatut
                                 ? "bg-slate-50 text-slate-300 cursor-not-allowed"
-                                : "bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white"
+                                : "bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white"
                                 }`}
                             >
                               {jStatut ? "Justifié" : "Justifier"}
@@ -251,7 +278,7 @@ export default function StudentDashboard() {
                   value={raison}
                   onChange={(e) => setRaison(e.target.value)}
                   rows={3}
-                  className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all resize-none shadow-sm"
+                  className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all resize-none shadow-sm"
                   placeholder="Pourquoi étiez-vous absent/en retard ?"
                 />
               </div>
@@ -262,7 +289,7 @@ export default function StudentDashboard() {
                   type="file"
                   onChange={(e) => setFile(e.target.files?.[0] || null)}
                   accept=".pdf,image/*"
-                  className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100 transition-all"
+                  className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 transition-all"
                 />
               </div>
 
@@ -278,7 +305,7 @@ export default function StudentDashboard() {
                 <button
                   type="submit"
                   disabled={sending}
-                  className="flex-[1.5] px-4 py-3 bg-indigo-600 text-white font-bold text-sm rounded-xl hover:bg-indigo-700 transition-all active:scale-95 shadow-md shadow-indigo-100 flex items-center justify-center gap-2"
+                  className="flex-[1.5] px-4 py-3 bg-blue-600 text-white font-bold text-sm rounded-xl hover:bg-blue-700 transition-all active:scale-95 shadow-md shadow-blue-100 flex items-center justify-center gap-2"
                 >
                   {sending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Envoyer"}
                 </button>
@@ -288,6 +315,52 @@ export default function StudentDashboard() {
         </div>
       )
       }
+
+      {/* Notifications Modal */}
+      {showNotifications && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-100 flex flex-col">
+            <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
+              <div>
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight">Messages <span className="text-blue-600">Admin</span></h3>
+                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 opacity-60">Communications de l'établissement</p>
+              </div>
+              <button 
+                onClick={() => setShowNotifications(false)}
+                className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-rose-500 hover:border-rose-100 hover:shadow-lg transition-all active:scale-90"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-8 space-y-6">
+              {messages.length === 0 ? (
+                <div className="py-20 text-center">
+                   <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100 shadow-inner">
+                      <svg className="w-10 h-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0a2 2 0 01-2 2H6a2 2 0 01-2-2m16 0l-8 5-8-5" /></svg>
+                   </div>
+                   <p className="text-slate-400 font-bold">Aucun message pour le moment</p>
+                </div>
+              ) : (
+                messages.map((m) => (
+                  <div key={m.id} className="group relative bg-slate-50 border border-slate-100 rounded-3xl p-6 hover:bg-white hover:border-blue-200 hover:shadow-xl hover:shadow-blue-50/50 transition-all duration-300">
+                    <div className="flex justify-between items-start mb-4">
+                      <span className="px-3 py-1 bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-widest rounded-lg">Admin</span>
+                      <span className="text-[10px] text-slate-400 font-bold">{new Date(m.createdAt).toLocaleString()}</span>
+                    </div>
+                    <p className="text-slate-700 text-sm font-semibold leading-relaxed whitespace-pre-wrap">{m.content}</p>
+                    <div className="absolute top-4 right-4 w-2 h-2 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm shadow-blue-200"></div>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            <div className="p-6 bg-slate-50/50 border-t border-slate-100 text-center">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Fin des notifications</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* QR Scanner Modal */}
       {
@@ -302,6 +375,7 @@ export default function StudentDashboard() {
           />
         )
       }
+      <Chatbot />
     </AppLayout >
   );
 }
@@ -310,7 +384,7 @@ export default function StudentDashboard() {
 
 function SimpleKPI({ label, value, icon, color }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:border-indigo-200 transition-colors flex items-center gap-4">
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:border-blue-200 transition-colors flex items-center gap-4">
       <div className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center`}>
         {icon}
       </div>
@@ -343,7 +417,7 @@ function StatusBadge({ s }) {
 
 function JustificationBadge({ s }) {
   const styles = {
-    en_attente: "text-indigo-600 bg-indigo-50 border-indigo-100",
+    en_attente: "text-blue-600 bg-blue-50 border-blue-100",
     validee: "text-emerald-600 bg-emerald-50 border-emerald-100",
     refusee: "text-rose-600 bg-rose-50 border-rose-100",
   };

@@ -4,8 +4,8 @@ import { getRole, logout } from "../auth/auth";
 const linkClass = ({ isActive }) =>
   `group flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all
    ${isActive
-    ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
-    : "text-slate-500 hover:bg-indigo-50 hover:text-indigo-600"}`;
+    ? "bg-blue-600 text-white shadow-md shadow-blue-100"
+    : "text-slate-500 hover:bg-blue-50 hover:text-blue-600"}`;
 
 export default function AppLayout({ children }) {
   const nav = useNavigate();
@@ -26,7 +26,7 @@ export default function AppLayout({ children }) {
   const roleColors = {
     admin: "bg-rose-500",
     teacher: "bg-amber-500",
-    student: "bg-indigo-500",
+    student: "bg-blue-500",
     guest: "bg-slate-500"
   };
 
@@ -40,11 +40,8 @@ export default function AppLayout({ children }) {
 
             {/* Brand Section */}
             <div className="flex items-center gap-3 mb-10">
-              <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white font-black flex items-center justify-center text-lg shadow-lg shadow-indigo-100">
-                A
-              </div>
               <div>
-                <h1 className="text-slate-900 font-extrabold text-base tracking-tight leading-tight">Absence<span className="text-indigo-600">Tracker</span></h1>
+                <h1 className="text-slate-900 font-extrabold text-base tracking-tight leading-tight">Gestion Absence</h1>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className={`w-1.5 h-1.5 rounded-full ${roleColors[role] || "bg-slate-400"}`} />
                   <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">{roleLabel[role]}</span>
@@ -55,7 +52,10 @@ export default function AppLayout({ children }) {
             {/* Navigation */}
             <nav className="space-y-1.5 flex-1">
               {role === "student" && (
-                <NavItem to="/student" icon={<HomeIcon />} label="Tableau de bord" />
+                <>
+                  <NavItem to="/student" icon={<HomeIcon />} label="Tableau de bord" />
+                  <NavItem to="/student/timetable" icon={<CalendarIcon />} label="Emploi du Temps" />
+                </>
               )}
 
               {role === "teacher" && (
@@ -67,11 +67,8 @@ export default function AppLayout({ children }) {
 
               {role === "admin" && (
                 <>
-                  <NavItem to="/admin" icon={<HomeIcon />} label="Vue d'ensemble" />
-                  <NavItem to="/admin/alerts" icon={<BellIcon />} label="Alertes" />
-                  <NavItem to="/admin/justifications" icon={<ShieldIcon />} label="Validations" />
-                  <NavItem to="/admin/import" icon={<UploadIcon />} label="Import Données" />
-                  <NavItem to="/admin/historique" icon={<UploadIcon />} label="Historique" />
+                  <NavItem to="/admin" icon={<HomeIcon />} label="Tableau de bord" />
+                  <NavItem to="/admin/alerts" icon={<BellIcon />} label="Anomalies IA" />
                 </>
               )}
             </nav>

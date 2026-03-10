@@ -9,6 +9,7 @@ from app.models.justification import Justification
 from app.models.user_student import Student
 from app.models.user_teacher import Teacher
 from app.models.absence import Absence
+from app.models.message import Message
 from app.schemas.admin import AlertUpdate
 from app.ai.feature_engineering import compute_student_features
 
@@ -82,6 +83,7 @@ async def list_alerts(
     for a in alerts:
         item = a.dict()
         item["id"] = str(a.id)
+        item["studentId"] = str(a.studentId)
         item["studentName"] = await get_student_name(a.studentId)
         enriched.append(item)
     return enriched
@@ -93,6 +95,15 @@ async def get_alert(alert_id: str):
     if not alert:
         return {"detail": "Alert not found"}
     return alert
+    
+# ✅ SUPPRIMER une alerte
+@router.delete("/alerts/{alert_id}")
+async def delete_alert(alert_id: str):
+    alert = await Alert.get(PydanticObjectId(alert_id))
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    await alert.delete()
+    return {"message": "Alert deleted"}
 
 # ✅ 2) Statistiques Globales
 @router.get("/stats")
@@ -168,6 +179,23 @@ async def decide_justification(justif_id: str, payload: dict, admin=Depends(requ
     await justif.save()
     return {"message": "Success", "id": str(justif.id), "statut": justif.statut}
 
+# ✅ MESSAGERIE: Envoyer un message à un étudiant
+@router.post("/messages")
+async def send_message_to_student(payload: dict, admin=Depends(require_role("admin"))):
+    student_id = payload.get("studentId")
+    content = payload.get("content")
+    
+    if not student_id or not content:
+        raise HTTPException(status_code=400, detail="studentId and content are required")
+        
+    msg = Message(
+        senderId=admin["user"].id,
+        receiverId=PydanticObjectId(student_id),
+        content=content
+    )
+    await msg.insert()
+    return {"message": "Message sent", "id": str(msg.id)}
+
 # ✅ 5) Détection d'anomalies par IA (Batch)
 @router.post("/ai/detect")
 async def detect_anomalies(period: str = "30d"):
@@ -196,8 +224,22 @@ async def detect_anomalies(period: str = "30d"):
         
         print(f"DEBUG AI: Student {s.nom} {s.prenom} -> Absent: {absent_rate:.2f}, Late: {late_rate:.2f}, Streak: {streak}, Score: {score:.4f}")
 
-        # Seuil d'alerte (plus bas pour tests: 0.1)
+        # Seuil d'alerte
         if score >= 0.1:
+            # Calculer le niveau de risque
+            risk = "low"
+            if score >= 0.6: risk = "high"
+            elif score >= 0.3: risk = "medium"
+
+            # Générer les raisons
+            reasons = []
+            if absent_rate > 0.2: reasons.append(f"Taux d'absence élevé ({absent_rate*100:.0f}%)")
+            if late_rate > 0.15: reasons.append(f"Retards répétés ({late_rate*100:.0f}%)")
+            if streak >= 3: reasons.append(f"Série de {int(streak)} absences consécutives")
+            if score >= 0.7: reasons.append("Score d'anomalie critique (risque de décrochage)")
+            
+            if not reasons: reasons = ["Comportement d'assiduité atypique détecté"]
+
             # Éviter les doublons (une alerte par jour max)
             today_start = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
             exists = await Alert.find_one(
@@ -210,6 +252,13 @@ async def detect_anomalies(period: str = "30d"):
                 alert = Alert(
                     typeAlerte="Anomalie d'assiduité",
                     scoreAnomalie=round(score, 4),
+                    riskLevel=risk,
+                    reasons=reasons,
+                    metrics={
+                        "absent_rate": round(absent_rate, 2),
+                        "late_rate": round(late_rate, 2),
+                        "max_streak": int(streak)
+                    },
                     dateStart=start_date,
                     periodEnd=end_date,
                     studentId=s.id,
@@ -221,4 +270,56 @@ async def detect_anomalies(period: str = "30d"):
     return {
         "message": f"Analyse terminée. {new_alerts_count} nouvelles alertes générées.",
         "count": new_alerts_count
+    }
+
+
+# ✅ 6) Gestion des Groupes (Emploi du temps)
+from app.models.group import Group
+import os
+import shutil
+from fastapi import UploadFile, File
+
+@router.get("/groups")
+async def list_groups():
+    groups = await Group.find_all().to_list()
+    enriched = []
+    for g in groups:
+        item = g.dict()
+        item["id"] = str(g.id)
+        if g.emploiDuTemps:
+            fname = os.path.basename(g.emploiDuTemps)
+            item["timetableUrl"] = f"http://localhost:8000/uploads/timetables/{fname}"
+        else:
+            item["timetableUrl"] = None
+        enriched.append(item)
+    return enriched
+
+@router.post("/groups/{group_id}/timetable")
+async def upload_group_timetable(group_id: str, file: UploadFile = File(...)):
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Veuillez uploader une image (PNG/JPG).")
+    
+    group = await Group.get(PydanticObjectId(group_id))
+    if not group:
+        raise HTTPException(status_code=404, detail="Groupe introuvable.")
+
+    # Création dossier si besoin
+    upload_dir = "uploads/timetables"
+    os.makedirs(upload_dir, exist_ok=True)
+
+    # Nom unique pour éviter cache browser ou collision
+    ext = os.path.splitext(file.filename)[1]
+    filename = f"timetable_{group_id}{ext}"
+    file_path = os.path.join(upload_dir, filename)
+
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    group.emploiDuTemps = file_path
+    group.updatedAt = datetime.now(timezone.utc)
+    await group.save()
+
+    return {
+        "message": "Emploi du temps mis à jour.",
+        "url": f"http://localhost:8000/uploads/timetables/{filename}"
     }

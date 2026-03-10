@@ -15,6 +15,11 @@ export async function getAlert(alertId) {
   return res.data;
 }
 
+export async function deleteAlert(alertId) {
+  const res = await http.delete(`/admin/alerts/${alertId}`);
+  return res.data;
+}
+
 export async function pendingJustifications() {
   const res = await http.get("/admin/justifications/pending");
   return res.data;
@@ -44,5 +49,24 @@ export async function importExcel(file) {
 }
 export async function generateAIAlerts(period = "30d") {
   const res = await http.post(`/admin/ai/detect?period=${period}`);
+  return res.data;
+}
+
+export async function listGroups() {
+  const res = await http.get("/admin/groups");
+  return res.data;
+}
+
+export async function uploadGroupTimetable(groupId, file) {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await http.post(`/admin/groups/${groupId}/timetable`, fd, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data;
+}
+
+export async function sendMessage(payload) {
+  const res = await http.post("/admin/messages", payload);
   return res.data;
 }

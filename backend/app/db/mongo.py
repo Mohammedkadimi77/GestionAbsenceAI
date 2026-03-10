@@ -13,6 +13,7 @@ from app.models.seance import Seance
 from app.models.absence import Absence
 from app.models.justification import Justification
 from app.models.alert import Alert
+from app.models.message import Message
 
 async def init_mongo():
     client = AsyncIOMotorClient(settings.MONGO_URI)
@@ -22,7 +23,7 @@ async def init_mongo():
         database=db,
         document_models=[
             Group, Administrator, Teacher, Student,
-            Module, Seance, Absence, Justification, Alert
+            Module, Seance, Absence, Justification, Alert, Message
         ],
     )
 def get_db():
