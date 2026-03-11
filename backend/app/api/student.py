@@ -78,20 +78,22 @@ async def scan_qr_code(payload: QRSubmit, current=Depends(require_role("student"
     student = current["user"]
     token = payload.qrToken
     now = datetime.now(timezone.utc)
+    # Rechercher la séance par token (uniquement le code actuel)
     seance = await Seance.find_one(Seance.qrToken == token)
     
     if not seance:
         raise HTTPException(status_code=404, detail="Code QR invalide")
     
-    expires_at = seance.qrExpiresAt
+    expires_at = seance.qrSessionExpiresAt
     if not expires_at:
         raise HTTPException(status_code=400, detail="Code QR non actif")
 
-    if expires_at and expires_at.tzinfo is None:
+    # Ensure timezone aware
+    if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
 
     if expires_at < now:
-        raise HTTPException(status_code=400, detail="Ce code QR a expiré")
+        raise HTTPException(status_code=400, detail="Ce code QR a expiré (session terminée)")
 
     if student.groupId != seance.groupId:
         raise HTTPException(status_code=403, detail="Vous n'appartenez pas à ce groupe")

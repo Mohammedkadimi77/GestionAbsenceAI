@@ -16,7 +16,12 @@ class Seance(Document):
 
     # QR Code fields
     qrToken: str | None = None
-    qrExpiresAt: datetime | None = None
+    qrLastToken: str | None = None  # Store previous token for overlap validation
+    qrExpiresAt: datetime | None = None  # Current token expiration (not strictly needed but kept for backward compatibility/legacy)
+    qrSessionExpiresAt: datetime | None = None  # Total 10-min window
+    qrLastRotationAt: datetime | None = None  # When the last 30s rotation happened
+
+    statut: str = "en_cours" # "en_cours" | "validee"
 
     createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updatedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

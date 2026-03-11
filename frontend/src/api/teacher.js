@@ -29,3 +29,20 @@ export async function generateQR(seanceId) {
   const res = await http.post(`/teacher/seances/${seanceId}/qr`);
   return res.data;
 }
+// ✅ Valider l'appel (Backend: Auto-marquage des absents + close seance)
+export async function validateAttendance(seanceId, payload) {
+  const res = await http.post(`/teacher/seances/${seanceId}/attendance/validate`, payload);
+  return res.data;
+}
+
+// ✅ Finaliser la séance (Timeout ou Manuel sans liste)
+export async function finalizeSeance(seanceId) {
+  const res = await http.post(`/teacher/seances/${seanceId}/finalize`);
+  return res.data;
+}
+
+// ✅ Récupérer historique des présences d'une séance
+export async function fetchSeanceAttendance(seanceId) {
+  const res = await http.get(`/teacher/seances/${seanceId}/attendance`);
+  return res.data;
+}

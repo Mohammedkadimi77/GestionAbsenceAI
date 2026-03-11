@@ -21,14 +21,15 @@ async def create_seance(payload: SeanceCreate, current=Depends(require_role("tea
     teacher = current["user"]
 
     seance = Seance(
-    dateSeance=payload.dateSeance,
-    heureDebut=payload.heureDebut,
-    heureFin=payload.heureFin,
-    typeSeance=payload.typeSeance,
-    salle=payload.salle,
-    moduleId=PydanticObjectId(payload.moduleId),
-    teacherId=teacher.id,
-    groupId=PydanticObjectId(payload.groupId),
+        dateSeance=payload.dateSeance,
+        heureDebut=payload.heureDebut,
+        heureFin=payload.heureFin,
+        typeSeance=payload.typeSeance,
+        salle=payload.salle,
+        moduleId=PydanticObjectId(payload.moduleId),
+        teacherId=teacher.id,
+        groupId=PydanticObjectId(payload.groupId),
+        statut="en_cours"
     )
     await seance.insert()
 
@@ -57,6 +58,7 @@ async def list_my_seances(date: str | None = None, current=Depends(require_role(
             "salle": s.salle,
             "moduleId": str(s.moduleId),
             "groupId": str(s.groupId),
+            "statut": s.statut,
         }
         for s in seances
     ]
@@ -117,11 +119,90 @@ async def submit_attendance(seance_id: str, payload: AttendanceSubmit, current=D
 
     return {"created": created, "updated": updated, "total_received": len(payload.items)}
 
-# ✅ Générer un QR Code (Token) valable 10 minutes
+async def _finalize_attendance(seance: Seance):
+    """Marque tous les étudiants non encore pointés comme ABSENTS et valide la séance."""
+    now = datetime.now(timezone.utc)
+    
+    # 1. Lister tous les étudiants du groupe
+    students = await Student.find(Student.groupId == seance.groupId).to_list()
+    
+    marked_absent = 0
+    for st in students:
+        # 2. Vérifier s'ils ont déjà un enregistrement d'absence/présence
+        existing = await Absence.find_one(Absence.studentId == st.id, Absence.seanceId == seance.id)
+        if not existing:
+            # 3. Créer enregistrement ABSENT
+            abs_doc = Absence(
+                statut="absent",
+                studentId=st.id,
+                seanceId=seance.id,
+                createdAt=now,
+                updatedAt=now,
+            )
+            await abs_doc.insert()
+            marked_absent += 1
+            
+    # 4. Marquer la séance comme validée
+    seance.statut = "validee"
+    await seance.save()
+    return marked_absent
+
+# ✅ Valider l’appel (bulk upsert ABSENCE + Finalisation)
+@router.post("/seances/{seance_id}/attendance/validate")
+async def validate_attendance(seance_id: str, payload: AttendanceSubmit, current=Depends(require_role("teacher"))):
+    teacher = current["user"]
+    seance = await Seance.get(PydanticObjectId(seance_id))
+    if not seance:
+        raise HTTPException(status_code=404, detail="Seance not found")
+    if seance.teacherId != teacher.id:
+        raise HTTPException(status_code=403, detail="Not your seance")
+
+    now = datetime.now(timezone.utc)
+
+    # 1. Traiter les présences soumises (cliquées manuellement ou scan QR)
+    for item in payload.items:
+        st_id = PydanticObjectId(item.studentId)
+        student = await Student.get(st_id)
+        if not student or student.groupId != seance.groupId:
+            continue
+
+        existing = await Absence.find_one(Absence.studentId == st_id, Absence.seanceId == seance.id)
+        if existing:
+            existing.statut = item.statut
+            existing.updatedAt = now
+            await existing.save()
+        else:
+            abs_doc = Absence(
+                statut=item.statut,
+                studentId=st_id,
+                seanceId=seance.id,
+                createdAt=now,
+                updatedAt=now,
+            )
+            await abs_doc.insert()
+
+    # 2. Finaliser : marquer le reste comme absent
+    marked_absent = await _finalize_attendance(seance)
+
+    return {"status": "validee", "auto_marked_absent": marked_absent}
+
+# ✅ Finaliser la séance (Timeout ou Manuel sans liste)
+@router.post("/seances/{seance_id}/finalize")
+async def finalize_seance(seance_id: str, current=Depends(require_role("teacher"))):
+    teacher = current["user"]
+    seance = await Seance.get(PydanticObjectId(seance_id))
+    if not seance:
+        raise HTTPException(status_code=404, detail="Seance not found")
+    if seance.teacherId != teacher.id:
+        raise HTTPException(status_code=403, detail="Not your seance")
+
+    marked_absent = await _finalize_attendance(seance)
+    return {"status": "validee", "auto_marked_absent": marked_absent}
+
+# ✅ Générer un QR Code (Token) tournant chaque 30s pendant 10 minutes
 @router.post("/seances/{seance_id}/qr")
 async def generate_qr_code(seance_id: str, current=Depends(require_role("teacher"))):
     teacher = current["user"]
-    # Validation ID
     try:
         s_oid = PydanticObjectId(seance_id)
     except Exception:
@@ -133,32 +214,45 @@ async def generate_qr_code(seance_id: str, current=Depends(require_role("teacher
     if seance.teacherId != teacher.id:
         raise HTTPException(status_code=403, detail="Not your seance")
 
-    # Générer token unique
     now = datetime.now(timezone.utc)
     
-    # Si un token existe et est encore valide (> maintenant), on le renvoie tel quel
-    if seance.qrToken and seance.qrExpiresAt:
-        # Ensure aware comparison to avoid TypeError
-        exp = seance.qrExpiresAt
-        if exp.tzinfo is None:
-            exp = exp.replace(tzinfo=timezone.utc)
-            
-        if exp > now:
-            return {"qrToken": seance.qrToken, "expiresAt": seance.qrExpiresAt}
+    # helper for timezone aware comparison
+    def make_aware(dt):
+        if dt and dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt
 
-    # Sinon, on en génère un nouveau
-    token = secrets.token_urlsafe(16)
-    expires = now + timedelta(minutes=10)
+    qr_session_exp = make_aware(seance.qrSessionExpiresAt)
+    qr_last_rot = make_aware(seance.qrLastRotationAt)
 
-    seance.qrToken = token
-    seance.qrExpiresAt = expires
-    await seance.save()
+    # 1. Gérer la session globale de 10 minutes
+    if not qr_session_exp or qr_session_exp < now:
+        seance.qrSessionExpiresAt = now + timedelta(minutes=10)
+        seance.qrToken = secrets.token_urlsafe(16)
+        seance.qrLastToken = None
+        seance.qrLastRotationAt = now
+        seance.qrExpiresAt = seance.qrSessionExpiresAt # Keep for old logic compatibility
+        await seance.save()
+        return {"qrToken": seance.qrToken, "expiresAt": seance.qrSessionExpiresAt}
 
-    print(f"[DEBUG GEN QR] New Token: {token}")
-    print(f"[DEBUG GEN QR] Now: {now}")
-    print(f"[DEBUG GEN QR] Expires: {expires}")
+    # 2. Gérer la rotation de 30 secondes
+    rotation_delta = timedelta(seconds=30)
+    if not qr_last_rot or (now - qr_last_rot) > rotation_delta:
+        seance.qrToken = secrets.token_urlsafe(16)
+        seance.qrLastRotationAt = now
+        await seance.save()
+        qr_last_rot = now # Update local for calc
+        print(f"[DEBUG GEN QR] Rotation - New Token: {seance.qrToken}")
 
-    return {"qrToken": token, "expiresAt": expires}
+    # Calculer combien de temps reste-t-il exactement avant le prochain changement (max 30s)
+    elapsed = (now - qr_last_rot).total_seconds()
+    next_rotation_in = max(0, 30.5 - elapsed) # 30.5 to add a tiny buffer for network
+
+    return {
+        "qrToken": seance.qrToken, 
+        "expiresAt": seance.qrSessionExpiresAt,
+        "nextRotationIn": int(next_rotation_in)
+    }
 # =========================
 # Schemas (Response models)
 # =========================
@@ -187,6 +281,33 @@ def oid_to_str(doc: dict) -> dict:
         doc["id"] = str(doc["_id"])
         doc.pop("_id", None)
     return doc
+
+
+# ✅ Récupérer la liste des présences pour une séance
+@router.get("/seances/{seance_id}/attendance")
+async def get_seance_attendance(seance_id: str, current=Depends(require_role("teacher"))):
+    teacher = current["user"]
+    seance = await Seance.get(PydanticObjectId(seance_id))
+    if not seance:
+        raise HTTPException(status_code=404, detail="Seance not found")
+    if seance.teacherId != teacher.id:
+        raise HTTPException(status_code=403, detail="Not your seance")
+
+    absences = await Absence.find(Absence.seanceId == seance.id).to_list()
+    
+    # On peut aussi enrichir avec les infos de l'étudiant
+    results = []
+    for abb in absences:
+        st = await Student.get(abb.studentId)
+        results.append({
+            "studentId": str(abb.studentId),
+            "nom": st.nom if st else "Inconnu",
+            "prenom": st.prenom if st else "",
+            "statut": abb.statut,
+            "updatedAt": abb.updatedAt
+        })
+        
+    return results
 
 
 # =========================

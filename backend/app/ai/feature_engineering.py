@@ -12,7 +12,7 @@ async def compute_student_features(student_id: PydanticObjectId, days: int = 30)
     # récupérer les séances dans la période
     seances = await Seance.find(Seance.dateSeance >= start_date.date()).to_list()
     seance_ids = [s.id for s in seances]
-
+        
     if not seance_ids:
         return {
             "total": 0,
@@ -32,7 +32,7 @@ async def compute_student_features(student_id: PydanticObjectId, days: int = 30)
     total = len(absences)
     absent = sum(1 for a in absences if a.statut == "absent")
     retard = sum(1 for a in absences if a.statut == "retard")
-
+    
     absence_rate = absent / total if total else 0
     retard_rate = retard / total if total else 0
 

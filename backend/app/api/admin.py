@@ -221,7 +221,7 @@ async def detect_anomalies(period: str = "30d"):
 
         # Formule: 50% absences, 30% retards, 20% streak
         score = (0.5 * absent_rate + 0.3 * late_rate + 0.2 * min(streak / 5.0, 1.0))
-        
+
         print(f"DEBUG AI: Student {s.nom} {s.prenom} -> Absent: {absent_rate:.2f}, Late: {late_rate:.2f}, Streak: {streak}, Score: {score:.4f}")
 
         # Seuil d'alerte
@@ -237,35 +237,35 @@ async def detect_anomalies(period: str = "30d"):
             if late_rate > 0.15: reasons.append(f"Retards répétés ({late_rate*100:.0f}%)")
             if streak >= 3: reasons.append(f"Série de {int(streak)} absences consécutives")
             if score >= 0.7: reasons.append("Score d'anomalie critique (risque de décrochage)")
-            
-            if not reasons: reasons = ["Comportement d'assiduité atypique détecté"]
 
-            # Éviter les doublons (une alerte par jour max)
+            if not reasons: reasons = ["Comportement d'assiduité atypique détecté"]
+        
+        # Éviter les doublons (une alerte par jour max)
             today_start = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
-            exists = await Alert.find_one(
+        exists = await Alert.find_one(
                 Alert.studentId == s.id,
-                Alert.createdAt >= today_start,
-                Alert.typeAlerte == "Anomalie d'assiduité"
-            )
-            
-            if not exists:
-                alert = Alert(
-                    typeAlerte="Anomalie d'assiduité",
+            Alert.createdAt >= today_start,
+            Alert.typeAlerte == "Anomalie d'assiduité"
+        )
+        
+        if not exists:
+            alert = Alert(
+                typeAlerte="Anomalie d'assiduité",
                     scoreAnomalie=round(score, 4),
-                    riskLevel=risk,
+                riskLevel=risk,
                     reasons=reasons,
                     metrics={
                         "absent_rate": round(absent_rate, 2),
                         "late_rate": round(late_rate, 2),
                         "max_streak": int(streak)
                     },
-                    dateStart=start_date,
-                    periodEnd=end_date,
+                dateStart=start_date,
+                periodEnd=end_date,
                     studentId=s.id,
-                    statut="nouvelle"
-                )
-                await alert.insert()
-                new_alerts_count += 1
+                statut="nouvelle"
+            )
+            await alert.insert()
+            new_alerts_count += 1
                 
     return {
         "message": f"Analyse terminée. {new_alerts_count} nouvelles alertes générées.",

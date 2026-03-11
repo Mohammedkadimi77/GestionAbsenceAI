@@ -3,8 +3,10 @@ import AppLayout from "../../layouts/AppLayout";
 import {
     fetchTeacherSeances,
     fetchStudentsByGroup,
-    submitAttendance,
     generateQR,
+    validateAttendance,
+    finalizeSeance,
+    fetchSeanceAttendance,
 } from "../../api/teacher";
 import QRCode from "react-qr-code";
 import { fetchTeacherGroups, fetchTeacherModules } from "../../api/ref";
@@ -39,6 +41,12 @@ export default function TeacherSeances() {
     const [openQR, setOpenQR] = useState(false);
     const [qrToken, setQrToken] = useState(null);
     const [qrExpiry, setQrExpiry] = useState(null);
+    const [qrTimeLeft, setQrTimeLeft] = useState(0);
+
+    // Validated Attendance List Modal
+    const [openHistory, setOpenHistory] = useState(false);
+    const [historyList, setHistoryList] = useState([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
 
     async function loadSeances() {
         setLoading(true);
@@ -107,8 +115,9 @@ export default function TeacherSeances() {
         setSaving(true);
         try {
             const items = Object.entries(attMap).map(([studentId, statut]) => ({ studentId, statut }));
-            await submitAttendance(selectedSeance.id || selectedSeance._id, { items });
+            await validateAttendance(selectedSeance.id || selectedSeance._id, { items });
             setOpenAttend(false);
+            loadSeances(); // Refresh list
         } catch (e) {
             setAttErr("Erreur validation");
         } finally {
@@ -121,11 +130,104 @@ export default function TeacherSeances() {
         try {
             const res = await generateQR(seance.id || seance._id);
             setQrToken(res.qrToken);
-            setQrExpiry(new Date(res.expiresAt));
+            const expiry = new Date(res.expiresAt);
+            setQrExpiry(expiry);
+            
+            // Calculer temps restant en secondes
+            const seconds = Math.floor((expiry.getTime() - new Date().getTime()) / 1000);
+            setQrTimeLeft(seconds > 0 ? seconds : 0);
+            
             setOpenQR(true);
         } catch (e) {
             alert("Erreur génération QR");
         }
+    }
+
+    // 1. Session Countdown Timer (1s)
+    useEffect(() => {
+        let timer = null;
+        if (openQR && qrTimeLeft > 0) {
+            timer = setInterval(() => {
+                setQrTimeLeft(prev => {
+                    if (prev <= 1) {
+                        clearInterval(timer);
+                        handleTimeoutFinalize();
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        }
+        return () => clearInterval(timer);
+    }, [openQR, qrTimeLeft > 0]); // Re-run only when modal opens or time reaches 0
+
+    // 2. Token Rotation (Precise synchronization)
+    useEffect(() => {
+        let timeout = null;
+        let isMounted = true;
+
+        async function syncRotation() {
+            if (!openQR || !selectedSeance || !isMounted) return;
+            try {
+                const res = await generateQR(selectedSeance.id || selectedSeance._id);
+                if (!isMounted) return;
+                
+                setQrToken(res.qrToken);
+                
+                // Calculate wait time based on backend feedback
+                // Defaults to 30s if nextRotationIn is missing
+                const waitSec = res.nextRotationIn !== undefined ? res.nextRotationIn : 30;
+                
+                // Schedule next poll exactly when the backend expects to rotate
+                // We add a small 500ms delay to ensure the backend clock has ticked past 30s
+                timeout = setTimeout(syncRotation, waitSec * 1000);
+            } catch (e) {
+                console.error("Erreur rotation QR", e);
+                // Retry in 5s if failed
+                timeout = setTimeout(syncRotation, 5000);
+            }
+        }
+
+        if (openQR) {
+            syncRotation();
+        }
+
+        return () => {
+            isMounted = false;
+            clearTimeout(timeout);
+        };
+    }, [openQR, selectedSeance]);
+
+    async function handleTimeoutFinalize() {
+        if (!selectedSeance) return;
+        try {
+            await finalizeSeance(selectedSeance.id || selectedSeance._id);
+            setOpenQR(false);
+            loadSeances(); // Refresh list to show "validee"
+            alert("Le QR Code a expiré. La séance a été clôturée avec les présences actuelles.");
+        } catch (e) {
+            console.error("Erreur finalisation timeout", e);
+        }
+    }
+
+    async function openHistoryAttend(s) {
+        setSelectedSeance(s);
+        setOpenHistory(true);
+        setHistoryLoading(true);
+        try {
+            const data = await fetchSeanceAttendance(s.id || s._id);
+            setHistoryList(data);
+        } catch (e) {
+            alert("Erreur chargement historique");
+        } finally {
+            setHistoryLoading(false);
+        }
+    }
+
+    function formatTimeLeft(seconds) {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s < 10 ? '0' : ''}${s}`;
     }
 
     const attStats = useMemo(() => {
@@ -212,6 +314,7 @@ export default function TeacherSeances() {
                                         <th className="px-6 py-4">Date & Heure</th>
                                         <th className="px-6 py-4">Module</th>
                                         <th className="px-6 py-4">Salle</th>
+                                        <th className="px-6 py-4">Statut</th>
                                         <th className="px-6 py-4 text-right">Action</th>
                                     </tr>
                                 </thead>
@@ -232,19 +335,37 @@ export default function TeacherSeances() {
                                             <td className="px-6 py-5">
                                                 <span className="text-xs font-medium text-slate-500">{s.salle || "-"}</span>
                                             </td>
+                                            <td className="px-6 py-5">
+                                                {s.statut === "validee" ? (
+                                                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-bold uppercase">Validée</span>
+                                                ) : (
+                                                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-[10px] font-bold uppercase animate-pulse">En cours</span>
+                                                )}
+                                            </td>
                                             <td className="px-6 py-5 text-right">
-                                                <button
-                                                    onClick={() => openAttendance(s)}
-                                                    className="px-3 py-2 bg-white border border-slate-200 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-95 mr-2"
-                                                >
-                                                    Appel
-                                                </button>
-                                                <button
-                                                    onClick={() => handleGenerateQR(s)}
-                                                    className="px-3 py-2 bg-slate-900 border border-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition-all shadow-sm active:scale-95"
-                                                >
-                                                    QR Code
-                                                </button>
+                                                {s.statut === "validee" ? (
+                                                    <button
+                                                        onClick={() => openHistoryAttend(s)}
+                                                        className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200 transition-all shadow-sm active:scale-95"
+                                                    >
+                                                        Liste Présents
+                                                    </button>
+                                                ) : (
+                                                    <>
+                                                        <button
+                                                            onClick={() => openAttendance(s)}
+                                                            className="px-3 py-2 bg-white border border-slate-200 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-95 mr-2"
+                                                        >
+                                                            Appel
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleGenerateQR(s)}
+                                                            className="px-3 py-2 bg-slate-900 border border-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition-all shadow-sm active:scale-95"
+                                                        >
+                                                            QR Code
+                                                        </button>
+                                                    </>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
@@ -350,10 +471,65 @@ export default function TeacherSeances() {
                         </div>
 
                         {qrExpiry && (
-                            <div className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full inline-block">
-                                Expire à {qrExpiry.toLocaleTimeString()}
+                            <div className="flex flex-col gap-3">
+                                <div className={`text-sm font-black p-3 rounded-2xl ${qrTimeLeft < 60 ? 'bg-rose-50 text-rose-600 animate-pulse' : 'bg-blue-50 text-blue-600'}`}>
+                                    Temps restant : {formatTimeLeft(qrTimeLeft)}
+                                </div>
+                                <button 
+                                    onClick={handleTimeoutFinalize}
+                                    className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl text-xs uppercase tracking-widest hover:bg-slate-800 transition-all"
+                                >
+                                    Clôturer l'appel maintenant
+                                </button>
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* History Attendance List Modal */}
+            {openHistory && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-emerald-50/30">
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800">Liste des Présences Validée</h3>
+                                <p className="text-slate-500 text-xs mt-1">Séance du {selectedSeance?.dateSeance} ({selectedSeance?.heureDebut})</p>
+                            </div>
+                            <button onClick={() => setOpenHistory(false)} className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-400 transition-all">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <div className="p-8 max-h-[60vh] overflow-y-auto">
+                            {historyLoading ? (
+                                <div className="text-center py-10">
+                                    <div className="w-8 h-8 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin mx-auto mb-4" />
+                                    <p className="text-slate-400 text-sm font-medium">Récupération de la liste...</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {historyList.map(item => (
+                                        <div key={item.studentId} className="flex items-center justify-between p-4 bg-white border border-slate-50 rounded-2xl shadow-sm">
+                                            <div>
+                                                <p className="font-bold text-slate-800 text-sm">{item.nom} {item.prenom}</p>
+                                            </div>
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                                item.statut === 'present' ? 'bg-emerald-50 text-emerald-600' : 
+                                                item.statut === 'retard' ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'
+                                            }`}>
+                                                {item.statut}
+                                            </span>
+                                        </div>
+                                    ))}
+                                    {historyList.length === 0 && <p className="text-center text-slate-400 py-10">Aucune donnée de présence.</p>}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-8 border-t border-slate-100 bg-slate-50/50 flex justify-end">
+                            <button onClick={() => setOpenHistory(false)} className="px-8 py-3 bg-slate-900 text-white font-bold rounded-xl shadow-lg hover:bg-slate-800 active:scale-95 transition-all text-xs uppercase tracking-widest">Fermer</button>
+                        </div>
                     </div>
                 </div>
             )}
